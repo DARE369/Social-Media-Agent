@@ -1,0 +1,318 @@
+/* ============================================================================
+   PROFESSIONAL THEME VARIABLES - V2
+   Beautiful Color Scheme: Teal/Cyan + Purple/Violet Accents
+   
+   🎨 BRAND COLOR PHILOSOPHY:
+   - Primary: Teal/Cyan (#14b8a6) - Modern, Tech, Trust
+   - Secondary: Purple/Violet (#a855f7) - Creative, Premium, AI
+   - Accent: Pink/Rose (#ec4899) - Energy, Success, CTA
+   
+   💡 NOTE: Replace these hex codes with your actual brand colors later
+   Search for "BRAND-PRIMARY", "BRAND-SECONDARY", "BRAND-ACCENT" to update
+============================================================================ */
+
+:root {
+  /* ===========================
+     🎨 BRAND COLORS (ACCENT USAGE)
+     Replace these with your actual brand palette
+  =========================== */
+  
+  /* Primary Brand Color - Used for: Primary buttons, links, active states */
+  --brand-primary: #14b8a6;           /* BRAND-PRIMARY: Teal */
+  --brand-primary-hover: #0d9488;     /* Darker teal for hover */
+  --brand-primary-light: rgba(20, 184, 166, 0.1); /* Transparent teal */
+  
+  /* Secondary Brand Color - Used for: Highlights, badges, creative elements */
+  --brand-secondary: #a855f7;         /* BRAND-SECONDARY: Purple */
+  --brand-secondary-hover: #9333ea;   /* Darker purple */
+  --brand-secondary-light: rgba(168, 85, 247, 0.1);
+  
+  /* Accent Brand Color - Used for: CTAs, success states, emphasis */
+  --brand-accent: #ec4899;            /* BRAND-ACCENT: Pink */
+  --brand-accent-hover: #db2777;
+  --brand-accent-light: rgba(236, 72, 153, 0.1);
+
+  /* ===========================
+     🌞 LIGHT MODE THEME (Default)
+  =========================== */
+  
+  /* Background Colors - Soft neutrals for professional look */
+  --app-bg: #f8fafc;              /* Light slate background */
+  --panel-bg: #ffffff;            /* Pure white panels */
+  --element-bg: #f1f5f9;          /* Light input backgrounds */
+  --card-bg: #ffffff;             /* Card backgrounds */
+  
+  /* Border Colors - Subtle separation */
+  --border-color: #e2e8f0;        /* Light gray borders */
+  --border-hover: #cbd5e1;        /* Slightly darker on hover */
+  
+  /* Text Colors - High contrast for readability */
+  --text-main: #0f172a;           /* Dark slate for primary text */
+  --text-muted: #64748b;          /* Muted gray for secondary text */
+  --text-inverse: #ffffff;        /* White text for dark backgrounds */
+  
+  /* Functional Colors - Consistent across themes */
+  --success: #22c55e;             /* Green for success */
+  --warning: #f59e0b;             /* Amber for warnings */
+  --error: #ef4444;               /* Red for errors */
+  --info: #3b82f6;                /* Blue for info */
+  
+  /* Shadows - Subtle depth */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  
+  /* Glass Morphism Effects */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.5);
+}
+
+/* ===========================
+   🌙 DARK MODE THEME
+   Activated when <html class="dark">
+=========================== */
+.dark {
+  /* Background Colors - Rich darks with subtle contrast */
+  --app-bg: #0a0e17;              /* Deep navy blue background */
+  --panel-bg: #0f1419;            /* Slightly lighter panels */
+  --element-bg: #1a1f2e;          /* Input/element backgrounds */
+  --card-bg: #0f1419;             /* Card backgrounds */
+  
+  /* Border Colors - Subtle in dark mode */
+  --border-color: #1e293b;        /* Dark slate borders */
+  --border-hover: #334155;        /* Lighter on hover */
+  
+  /* Text Colors - Softer whites for less eye strain */
+  --text-main: #e2e8f0;           /* Light slate text */
+  --text-muted: #94a3b8;          /* Muted slate gray */
+  --text-inverse: #0f172a;        /* Dark text for light backgrounds */
+  
+  /* Shadows - Deeper in dark mode */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+  
+  /* Glass Morphism - Darker glass */
+  --glass-bg: rgba(15, 20, 25, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+/* ===========================
+   🎯 GLOBAL RESETS & BASE STYLES
+=========================== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background-color: var(--app-bg);
+  color: var(--text-main);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===========================
+   🔧 UTILITY CLASSES
+=========================== */
+
+/* Primary Button - Uses brand primary color */
+.btn-primary {
+  background: var(--brand-primary);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary:hover {
+  background: var(--brand-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Secondary Button - Outline style */
+.btn-secondary {
+  background: transparent;
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-secondary:hover {
+  background: var(--element-bg);
+  border-color: var(--border-hover);
+}
+
+/* Accent Button - Uses brand accent color */
+.btn-accent {
+  background: var(--brand-accent);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-accent:hover {
+  background: var(--brand-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Text Links */
+.text-link {
+  color: var(--brand-primary);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.text-link:hover {
+  color: var(--brand-primary-hover);
+  text-decoration: underline;
+}
+
+/* Card Styles */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-hover);
+}
+
+/* Badge Styles */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-primary {
+  background: var(--brand-primary-light);
+  color: var(--brand-primary);
+}
+
+.badge-secondary {
+  background: var(--brand-secondary-light);
+  color: var(--brand-secondary);
+}
+
+.badge-success {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--success);
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+}
+
+.badge-error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--error);
+}
+
+/* ===========================
+   🎬 ANIMATIONS
+=========================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ===========================
+   📱 RESPONSIVE BREAKPOINTS
+=========================== */
+@media (max-width: 768px) {
+  :root {
+    --shadow-md: 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+  }
+  
+  .btn-primary,
+  .btn-secondary,
+  .btn-accent {
+    width: 100%;
+    justify-content: center;
+  }
+}

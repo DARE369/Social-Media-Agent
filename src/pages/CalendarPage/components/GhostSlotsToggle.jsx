@@ -37,6 +37,7 @@ export default function GhostSlotsToggle({ enabled, ghostCount }) {
         className={`ghost-toggle-btn ${enabled ? 'active' : ''}`}
         onClick={handleToggle}
         disabled={loading}
+        type="button"
       >
         <div className="toggle-icon">
           {loading ? (
@@ -63,6 +64,7 @@ export default function GhostSlotsToggle({ enabled, ghostCount }) {
         className="btn-icon-only"
         onClick={() => setShowSettings(!showSettings)}
         title="Ghost Slots Settings"
+        type="button"
       >
         <Settings size={16} />
       </button>
@@ -118,6 +120,7 @@ function GhostSlotsSettings({ onClose }) {
                   key={num}
                   className={`frequency-btn ${frequency === num ? 'active' : ''}`}
                   onClick={() => setFrequency(num)}
+                  type="button"
                 >
                   {num}
                 </button>
@@ -142,10 +145,10 @@ function GhostSlotsSettings({ onClose }) {
 
         {/* Footer Actions */}
         <div className="dropdown-footer">
-          <button className="btn-secondary" onClick={onClose}>
+          <button className="btn-secondary" onClick={onClose} type="button">
             Cancel
           </button>
-          <button className="btn-primary" onClick={handleSave}>
+          <button className="btn-primary" onClick={handleSave} type="button">
             Save Settings
           </button>
         </div>

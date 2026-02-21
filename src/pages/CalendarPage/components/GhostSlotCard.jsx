@@ -7,7 +7,7 @@ import '../../../styles/CalendarV2.css';
  * GhostSlotCard - AI-suggested content slot
  * Shows recommended topics and optimal posting times
  */
-export default function GhostSlotCard({ ghostSlot, onClick, compact = false, showTime = false }) {
+export default function GhostSlotCard({ ghostSlot, onClick, onDismiss, compact = false, showTime = false }) {
   
   // Handle dismiss
   const handleDismiss = async (e) => {
@@ -18,9 +18,8 @@ export default function GhostSlotCard({ ghostSlot, onClick, compact = false, sho
         .from('ghost_slots')
         .update({ status: 'dismissed' })
         .eq('id', ghostSlot.id);
-      
-      // Trigger refresh
-      window.location.reload();
+
+      onDismiss?.(ghostSlot.id);
     } catch (error) {
       console.error('Failed to dismiss ghost slot:', error);
     }
@@ -39,8 +38,23 @@ export default function GhostSlotCard({ ghostSlot, onClick, compact = false, sho
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   };
 
+  const handleKeyDown = (event) => {
+    if (!onClick) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
-    <div className={`ghost-slot-card ${compact ? 'compact' : ''}`} onClick={onClick}>
+    <div
+      className={`ghost-slot-card ${compact ? 'compact' : ''}`}
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label="Open AI slot suggestion"
+    >
       {/* Ghost Icon */}
       <div className="ghost-icon">
         <Sparkles size={compact ? 14 : 18} />
@@ -86,7 +100,13 @@ export default function GhostSlotCard({ ghostSlot, onClick, compact = false, sho
       </div>
 
       {/* Dismiss Button */}
-      <button className="ghost-dismiss" onClick={handleDismiss} title="Dismiss suggestion">
+      <button
+        className="ghost-dismiss"
+        onClick={handleDismiss}
+        title="Dismiss suggestion"
+        type="button"
+        aria-label="Dismiss AI suggestion"
+      >
         <X size={14} />
       </button>
     </div>

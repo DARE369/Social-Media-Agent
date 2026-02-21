@@ -1,13 +1,33 @@
 // src/pages/CalendarPage/components/DraftsSidebar.jsx
 import React from "react";
-import { Calendar } from "lucide-react";
+import { Calendar, X } from "lucide-react";
 
-export default function DraftsSidebar({ drafts, onDraftClick }) {
+export default function DraftsSidebar({ drafts, onDraftClick, isCompact = false, isOpen = true, onClose = () => {} }) {
+  const handleDraftKeyDown = (event, draft) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onDraftClick(draft);
+    }
+  };
+
   return (
-    <aside className="drafts-sidebar">
+    <aside className={`drafts-sidebar ${isCompact ? "compact" : ""} ${isOpen ? "open" : ""}`} aria-label="Unscheduled drafts">
       <div className="drafts-header">
         <h3>Unscheduled Drafts</h3>
-        <span className="drafts-count">{drafts.length}</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <span className="drafts-count">{drafts.length}</span>
+          {isCompact && (
+            <button
+              type="button"
+              className="btn-icon-only"
+              aria-label="Close drafts panel"
+              onClick={onClose}
+              title="Close drafts panel"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </div>
       <p className="drafts-subtitle">Drag to calendar or click to schedule</p>
 
@@ -24,13 +44,17 @@ export default function DraftsSidebar({ drafts, onDraftClick }) {
               key={draft.id} 
               className="draft-card"
               onClick={() => onDraftClick(draft)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => handleDraftKeyDown(event, draft)}
+              aria-label={`Schedule draft: ${draft.caption || draft.generations?.prompt || "Untitled Draft"}`}
             >
               {/* Thumbnail */}
               <div className="draft-thumbnail">
                 {draft.generations?.media_type === 'video' ? (
                   <video src={draft.generations?.storage_path} />
                 ) : (
-                  <img src={draft.generations?.storage_path} alt="" />
+                  <img src={draft.generations?.storage_path} alt="Draft media preview" />
                 )}
                 <span className="media-badge">
                   {draft.generations?.media_type || 'IMAGE'}
@@ -52,6 +76,7 @@ export default function DraftsSidebar({ drafts, onDraftClick }) {
               {/* CTA */}
               <button 
                 className="btn-schedule-draft"
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDraftClick(draft);

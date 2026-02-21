@@ -123,7 +123,7 @@ export default function UserDetailsPanel({ user, onClose }) {
       <div className="details-header">
         <div className="flex items-center gap-6 w-full">
           {/* Mobile Back Button */}
-          <button onClick={onClose} className="md:hidden text-gray-400 mr-2 hover:text-white">
+          <button onClick={onClose} className="md:hidden text-gray-400 mr-2 hover:text-white" type="button" aria-label="Back to user list">
             <ArrowLeft size={24} />
           </button>
 
@@ -157,6 +157,7 @@ export default function UserDetailsPanel({ user, onClose }) {
       key={tab}
       className={`nav-tab ${activeTab === tab ? "active" : ""}`}
       onClick={() => setActiveTab(tab)}
+      type="button"
     >
       {tab}
     </button>
@@ -207,6 +208,7 @@ export default function UserDetailsPanel({ user, onClose }) {
                   onClick={handleSuspend}
                   disabled={actionLoading}
                   className="btn-danger-zone btn-suspend"
+                  type="button"
                 >
                   {actionLoading ? "Processing..." : (user.status === 'suspended' ? "Unsuspend User" : "Suspend User")}
                 </button>
@@ -215,6 +217,7 @@ export default function UserDetailsPanel({ user, onClose }) {
                   onClick={handleResetPassword}
                   disabled={actionLoading}
                   className="btn-danger-zone btn-reset"
+                  type="button"
                 >
                   Send Password Reset
                 </button>
@@ -223,6 +226,7 @@ export default function UserDetailsPanel({ user, onClose }) {
                   onClick={handleDelete}
                   disabled={actionLoading}
                   className="btn-danger-zone btn-delete"
+                  type="button"
                 >
                   Delete Account
                 </button>

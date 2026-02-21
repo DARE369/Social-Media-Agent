@@ -213,7 +213,7 @@ export default function AdminModerationPage() {
           <h1>Content Moderation</h1>
           <p>Master view of all content lifecycle.</p>
         </div>
-        <button onClick={fetchData} className="btn-icon"><RefreshCw size={18}/></button>
+        <button onClick={fetchData} className="btn-icon" type="button" aria-label="Refresh moderation data"><RefreshCw size={18}/></button>
       </header>
 
       {errorMsg && <div className="error-banner"><AlertTriangle size={16}/> {errorMsg}</div>}

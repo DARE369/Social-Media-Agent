@@ -110,7 +110,7 @@ export default function OptimalTimesPanel({ onClose }) {
               <p className="header-subtitle">AI-analyzed optimal times based on your performance</p>
             </div>
           </div>
-          <button className="btn-close" onClick={onClose}>
+          <button className="btn-close" onClick={onClose} type="button">
             <X size={20} />
           </button>
         </div>
@@ -120,6 +120,7 @@ export default function OptimalTimesPanel({ onClose }) {
           <button
             className={`filter-btn ${selectedPlatform === 'all' ? 'active' : ''}`}
             onClick={() => setSelectedPlatform('all')}
+            type="button"
           >
             All Platforms
           </button>
@@ -132,6 +133,7 @@ export default function OptimalTimesPanel({ onClose }) {
                 borderColor: selectedPlatform === platform ? getPlatformColor(platform) : undefined,
                 color: selectedPlatform === platform ? getPlatformColor(platform) : undefined,
               }}
+              type="button"
             >
               {getPlatformIcon(platform)}
               <span style={{ textTransform: 'capitalize' }}>{platform}</span>

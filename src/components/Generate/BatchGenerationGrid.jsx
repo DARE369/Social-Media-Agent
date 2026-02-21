@@ -80,6 +80,14 @@ export default function BatchGenerationGrid({ generations = [], onSelect }) {
     }
   };
 
+  const handleCardKeyDown = (event, generation, isCompleted) => {
+    if (!isCompleted) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleSelect(generation);
+    }
+  };
+
   return (
     <div className="batch-generation-container">
       {/* Selection Header (only show if multiple completed items) */}
@@ -97,12 +105,12 @@ export default function BatchGenerationGrid({ generations = [], onSelect }) {
           </div>
           <div className="selection-actions">
             {selectedIds.length === 0 ? (
-              <button className="btn-select-action" onClick={selectAll}>
+              <button className="btn-select-action" onClick={selectAll} type="button">
                 <CheckSquare size={14} />
                 Select All
               </button>
             ) : (
-              <button className="btn-select-action" onClick={clearSelection}>
+              <button className="btn-select-action" onClick={clearSelection} type="button">
                 Clear Selection
               </button>
             )}
@@ -125,6 +133,10 @@ export default function BatchGenerationGrid({ generations = [], onSelect }) {
               onMouseEnter={() => setHoveredId(gen.id)}
               onMouseLeave={() => setHoveredId(null)}
               onClick={() => isCompleted && handleSelect(gen)}
+              onKeyDown={(event) => handleCardKeyDown(event, gen, isCompleted)}
+              role={isCompleted ? 'button' : undefined}
+              tabIndex={isCompleted ? 0 : -1}
+              aria-label={isCompleted ? 'Open generated result' : 'Result is still generating'}
             >
               {/* Media Preview - Full Size */}
               <div className="result-media-container">
@@ -184,6 +196,7 @@ export default function BatchGenerationGrid({ generations = [], onSelect }) {
                       <button
                         className={`selection-btn ${isSelected ? 'selected' : ''}`}
                         onClick={(e) => toggleSelection(gen.id, e)}
+                        type="button"
                       >
                         <Check size={16} strokeWidth={3} />
                       </button>
@@ -194,6 +207,7 @@ export default function BatchGenerationGrid({ generations = [], onSelect }) {
                         className="action-icon-btn"
                         onClick={(e) => handleDownload(gen, e)}
                         title="Download"
+                        type="button"
                       >
                         <Download size={18} />
                       </button>
@@ -205,6 +219,7 @@ export default function BatchGenerationGrid({ generations = [], onSelect }) {
                           handleSelect(gen);
                         }}
                         title="Use for Post"
+                        type="button"
                       >
                         <Maximize2 size={18} />
                       </button>
@@ -246,6 +261,7 @@ export default function BatchGenerationGrid({ generations = [], onSelect }) {
             <button 
               className="btn-batch-action secondary"
               onClick={downloadSelected}
+              type="button"
             >
               <Download size={14} />
               Download ({selectedIds.length})
@@ -253,6 +269,7 @@ export default function BatchGenerationGrid({ generations = [], onSelect }) {
             <button 
               className="btn-batch-action primary"
               onClick={useSelected}
+              type="button"
             >
               Use for Post
             </button>

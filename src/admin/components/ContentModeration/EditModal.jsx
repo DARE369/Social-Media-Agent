@@ -17,7 +17,7 @@ export default function EditModal({ post, onClose, onSave }) {
         <div className="edit-form-col">
           <div className="modal-header">
             <h2 className="modal-title">Edit Content</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <button onClick={onClose} className="text-gray-400 hover:text-white" type="button" aria-label="Close edit modal">
               <X size={24} />
             </button>
           </div>
@@ -43,8 +43,8 @@ export default function EditModal({ post, onClose, onSave }) {
           </div>
 
           <div className="modal-footer">
-            <button onClick={onClose} className="btn-cancel">Cancel</button>
-            <button onClick={() => onSave(edited)} className="btn-primary">
+            <button onClick={onClose} className="btn-cancel" type="button">Cancel</button>
+            <button onClick={() => onSave(edited)} className="btn-primary" type="button">
               <Save size={18} /> Save Changes
             </button>
           </div>

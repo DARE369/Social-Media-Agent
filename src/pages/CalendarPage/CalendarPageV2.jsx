@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, TrendingUp, Zap, Settings, Plus, BarChart3 } from 'lucide-react';
+import { Calendar, TrendingUp, Zap, Plus, BarChart3 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import UserNavbar from '../../components/User/UserNavbar';
 import UserSidebar from '../../components/User/UserSidebar';
@@ -11,6 +11,13 @@ import GhostSlotsToggle from './components/GhostSlotsToggle';
 import BulkScheduleModal from './components/BulkScheduleModal';
 import useCalendarStore from '../../stores/CalendarStore';
 import '../../styles/CalendarV2.css';
+
+const COMPACT_LAYOUT_QUERY = '(max-width: 1180px)';
+
+function isCompactLayoutDefault() {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia(COMPACT_LAYOUT_QUERY).matches;
+}
 
 /**
  * CalendarPageV2 - Main scheduling and content management hub
@@ -37,11 +44,15 @@ export default function CalendarPageV2() {
     setViewMode,
     setSelectedDate,
     updatePost,
+    createPost,
+    acceptGhostSlot,
   } = useCalendarStore();
 
   const [editingPost, setEditingPost] = useState(null);
   const [showOptimalTimes, setShowOptimalTimes] = useState(false);
   const [showBulkSchedule, setShowBulkSchedule] = useState(false);
+  const [isCompactLayout, setIsCompactLayout] = useState(isCompactLayoutDefault);
+  const [draftsOpen, setDraftsOpen] = useState(() => !isCompactLayoutDefault());
 
   // Initial data load
   useEffect(() => {
@@ -57,9 +68,31 @@ export default function CalendarPageV2() {
     }
   }, [calendarSettings?.ghost_slots_enabled]);
 
+  // Keep drawer behavior predictable when crossing tablet/desktop widths.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const media = window.matchMedia(COMPACT_LAYOUT_QUERY);
+    const syncLayout = (event) => {
+      setIsCompactLayout(event.matches);
+      setDraftsOpen(!event.matches);
+    };
+
+    syncLayout(media);
+    media.addEventListener('change', syncLayout);
+    return () => media.removeEventListener('change', syncLayout);
+  }, []);
+
+  const closeDraftsIfCompact = () => {
+    if (isCompactLayout) {
+      setDraftsOpen(false);
+    }
+  };
+
   // Handle post click from calendar
   const handlePostClick = (post) => {
     setEditingPost(post);
+    closeDraftsIfCompact();
   };
 
   // Handle drag and drop reschedule
@@ -83,7 +116,7 @@ export default function CalendarPageV2() {
   };
 
   return (
-    <div className="calendar-v2-shell">
+    <div className={`calendar-v2-shell ${draftsOpen ? 'drafts-open' : ''}`}>
       <Toaster
         position="top-center"
         toastOptions={{
@@ -104,13 +137,22 @@ export default function CalendarPageV2() {
         {/* Drafts Sidebar (Left) */}
         <DraftsSidebar
           drafts={drafts}
-          onDraftClick={(draft) => setEditingPost({
-            generation_id: draft.generation_id,
-            caption: draft.caption,
-            media_type: draft.generations?.media_type,
-            storage_path: draft.generations?.storage_path,
-          })}
+          isCompact={isCompactLayout}
+          isOpen={draftsOpen}
+          onClose={() => setDraftsOpen(false)}
+          onDraftClick={(draft) => {
+            setEditingPost(draft);
+            closeDraftsIfCompact();
+          }}
         />
+        {isCompactLayout && draftsOpen && (
+          <button
+            type="button"
+            className="drafts-backdrop"
+            aria-label="Close drafts panel"
+            onClick={() => setDraftsOpen(false)}
+          />
+        )}
 
         {/* Main Calendar Area */}
         <main className="calendar-main-area">
@@ -119,7 +161,7 @@ export default function CalendarPageV2() {
             <div className="header-left">
               <h1>Content Calendar</h1>
               <p className="header-subtitle">
-                {posts.length} scheduled • {drafts.length} drafts
+                {posts.length} scheduled | {drafts.length} drafts
                 {calendarSettings?.ghost_slots_enabled && ghostSlots.length > 0 && (
                   <span className="ghost-badge">
                     <Zap size={12} />
@@ -130,6 +172,18 @@ export default function CalendarPageV2() {
             </div>
 
             <div className="header-actions">
+              {isCompactLayout && (
+                <button
+                  className="btn-header-action"
+                  onClick={() => setDraftsOpen((open) => !open)}
+                  title={draftsOpen ? 'Hide drafts panel' : 'Open drafts panel'}
+                  type="button"
+                >
+                  <Plus size={18} />
+                  <span>{draftsOpen ? 'Hide Drafts' : `Drafts (${drafts.length})`}</span>
+                </button>
+              )}
+
               {/* Ghost Slots Toggle */}
               <GhostSlotsToggle
                 enabled={calendarSettings?.ghost_slots_enabled}
@@ -141,6 +195,7 @@ export default function CalendarPageV2() {
                 className="btn-header-action"
                 onClick={() => setShowOptimalTimes(!showOptimalTimes)}
                 title="View Optimal Posting Times"
+                type="button"
               >
                 <TrendingUp size={18} />
                 <span>Best Times</span>
@@ -151,6 +206,7 @@ export default function CalendarPageV2() {
                 className="btn-header-action"
                 onClick={() => setShowBulkSchedule(true)}
                 title="Schedule Multiple Posts"
+                type="button"
               >
                 <Calendar size={18} />
                 <span>Bulk Schedule</span>
@@ -161,18 +217,21 @@ export default function CalendarPageV2() {
                 <button
                   className={viewMode === 'month' ? 'active' : ''}
                   onClick={() => setViewMode('month')}
+                  type="button"
                 >
                   Month
                 </button>
                 <button
                   className={viewMode === 'week' ? 'active' : ''}
                   onClick={() => setViewMode('week')}
+                  type="button"
                 >
                   Week
                 </button>
                 <button
                   className={viewMode === 'day' ? 'active' : ''}
                   onClick={() => setViewMode('day')}
+                  type="button"
                 >
                   Day
                 </button>
@@ -181,12 +240,18 @@ export default function CalendarPageV2() {
               {/* Quick Stats */}
               <button
                 className="btn-icon-only"
-                onClick={() => alert('Analytics coming soon!')}
-                title="View Analytics"
+                onClick={() => setShowOptimalTimes(true)}
+                title="View posting-time insights"
+                type="button"
               >
                 <BarChart3 size={20} />
               </button>
             </div>
+            {isCompactLayout && (
+              <p className="touch-reflow-note">
+                Drag-and-drop is disabled on touch layouts. Tap any post to reschedule.
+              </p>
+            )}
           </div>
 
           {/* Calendar View */}
@@ -204,7 +269,9 @@ export default function CalendarPageV2() {
               onPostClick={handlePostClick}
               onPostReschedule={handlePostReschedule}
               onGhostSlotClick={handleAcceptGhostSlot}
+              onGhostSlotDismiss={() => fetchGhostSlots()}
               onDateChange={setSelectedDate}
+              allowDragDrop={!isCompactLayout}
             />
           )}
 
@@ -220,10 +287,37 @@ export default function CalendarPageV2() {
         <ScheduleModal
           post={editingPost}
           onClose={() => setEditingPost(null)}
-          onSave={() => {
-            setEditingPost(null);
-            fetchPosts();
-            fetchDrafts();
+          onSave={async (payload) => {
+            try {
+              if (payload.id) {
+                await updatePost(payload.id, {
+                  caption: payload.caption ?? null,
+                  scheduled_at: payload.scheduled_at,
+                  status: 'scheduled',
+                });
+              } else if (payload.ghost_slot_id) {
+                await acceptGhostSlot(payload.ghost_slot_id, {
+                  caption: payload.caption ?? '',
+                  scheduled_at: payload.scheduled_at,
+                  status: 'scheduled',
+                  platform: payload.platform || 'instagram',
+                  generation_id: payload.generation_id || null,
+                });
+              } else {
+                await createPost({
+                  caption: payload.caption ?? '',
+                  scheduled_at: payload.scheduled_at,
+                  status: 'scheduled',
+                  platform: payload.platform || 'instagram',
+                  generation_id: payload.generation_id || null,
+                });
+              }
+            } catch (error) {
+              console.error('Failed to save schedule:', error);
+            } finally {
+              setEditingPost(null);
+              await Promise.all([fetchPosts(), fetchDrafts(), fetchGhostSlots()]);
+            }
           }}
         />
       )}
@@ -242,3 +336,4 @@ export default function CalendarPageV2() {
     </div>
   );
 }
+

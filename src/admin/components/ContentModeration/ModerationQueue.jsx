@@ -26,11 +26,11 @@ export default function ModerationQueue({ groupedPosts = {}, onAction }) {
             <table className="queue-table">
               <thead>
                 <tr>
-                  <th className="pl-6 w-24">Media</th>
-                  <th className="w-48">User</th>
-                  <th>Caption / Details</th>
-                  <th className="w-32">Status</th>
-                  <th className="text-right pr-6 w-40">Actions</th>
+                  <th scope="col" className="pl-6 w-24">Media</th>
+                  <th scope="col" className="w-48">User</th>
+                  <th scope="col">Caption / Details</th>
+                  <th scope="col" className="w-32">Status</th>
+                  <th scope="col" className="text-right pr-6 w-40">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -48,7 +48,7 @@ export default function ModerationQueue({ groupedPosts = {}, onAction }) {
                   return (
                     <tr key={post.id}>
                       {/* Media Preview */}
-                      <td className="pl-6 py-4">
+                      <td className="pl-6 py-4" data-label="Media">
                         <div className="table-media-preview">
                           {mediaUrl ? (
                             isVideo ? (
@@ -65,7 +65,7 @@ export default function ModerationQueue({ groupedPosts = {}, onAction }) {
                       </td>
 
                       {/* User Info */}
-                      <td className="py-4">
+                      <td className="py-4" data-label="User">
                         <div className="font-medium text-white text-sm">
                           {post.profiles?.full_name || "Unknown User"}
                         </div>
@@ -75,7 +75,7 @@ export default function ModerationQueue({ groupedPosts = {}, onAction }) {
                       </td>
 
                       {/* Content Details */}
-                      <td className="py-4">
+                      <td className="py-4" data-label="Caption / Details">
                         <div className="text-sm text-gray-300 line-clamp-2 mb-1" title={displayCaption}>
                           {displayCaption}
                         </div>
@@ -88,14 +88,14 @@ export default function ModerationQueue({ groupedPosts = {}, onAction }) {
                       </td>
 
                       {/* Status Badge */}
-                      <td className="py-4">
+                      <td className="py-4" data-label="Status">
                         <span className={`status-badge status-${post.unified_status}`}>
                           {post.unified_status}
                         </span>
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 text-right pr-6">
+                      <td className="py-4 text-right pr-6" data-label="Actions">
                         <div className="row-actions">
                           {/* Schedule Button (Only for Drafts) */}
                           {post.unified_status === 'draft' && (
@@ -103,6 +103,7 @@ export default function ModerationQueue({ groupedPosts = {}, onAction }) {
                               onClick={() => onAction('schedule', post)} 
                               className="btn-action-sm schedule" 
                               title="Schedule Post"
+                              type="button"
                             >
                               <Send size={14} />
                             </button>
@@ -114,6 +115,7 @@ export default function ModerationQueue({ groupedPosts = {}, onAction }) {
                               onClick={() => onAction('edit', post)} 
                               className="btn-action-sm" 
                               title="Edit Content"
+                              type="button"
                             >
                               <Edit size={14} />
                             </button>
@@ -124,6 +126,7 @@ export default function ModerationQueue({ groupedPosts = {}, onAction }) {
                             onClick={() => onAction('delete', post)} 
                             className="btn-action-sm delete" 
                             title="Delete"
+                            type="button"
                           >
                             <Trash2 size={14} />
                           </button>

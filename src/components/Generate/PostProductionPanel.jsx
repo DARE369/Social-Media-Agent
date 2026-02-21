@@ -294,7 +294,7 @@ export default function PostProductionPanel({ onClose }) {
             <div className="panel-steps" role="tablist" aria-label="Steps">
               {STEPS.map((s, i) => (
                 <React.Fragment key={s.id}>
-                  <div
+                  <button
                     className={[
                       'panel-step',
                       step === s.id   ? 'active' : '',
@@ -304,12 +304,13 @@ export default function PostProductionPanel({ onClose }) {
                     aria-selected={step === s.id}
                     onClick={() => step > s.id && setStep(s.id)}
                     style={{ cursor: step > s.id ? 'pointer' : 'default' }}
+                    type="button"
                   >
                     <span className="step-num">
                       {step > s.id ? <CheckCircle2 size={12} /> : s.id}
                     </span>
                     <span className="step-label">{s.label}</span>
-                  </div>
+                  </button>
                   {i < STEPS.length - 1 && (
                     <div className={`step-connector ${step > s.id ? 'done' : ''}`} aria-hidden="true" />
                   )}

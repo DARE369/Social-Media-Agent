@@ -8,11 +8,14 @@ import "../../styles/AdminDashboard.css";
 
 export default function UserListRow({ user, isSelected, onClick }) {
   return (
-    <div
+    <button
       className={`user-list-row ${isSelected ? "selected" : ""}`}
       onClick={onClick}
+      type="button"
+      aria-pressed={isSelected}
+      aria-label={`Open details for ${user.name}`}
     >
-      <img src={user.avatar} alt={user.name} className="user-avatar" />
+      <img src={user.avatar} alt={`${user.name} avatar`} className="user-avatar" />
       <div className="user-info">
         <p className="user-name">{user.name}</p>
         <p className="user-email">{user.email}</p>
@@ -20,6 +23,6 @@ export default function UserListRow({ user, isSelected, onClick }) {
       <span className={`status-badge ${user.status.toLowerCase()}`}>
         {user.status}
       </span>
-    </div>
+    </button>
   );
 }

@@ -19,7 +19,7 @@ export default function AdminNavbar({ toggleSidebar }) {
     <nav className="admin-navbar">
       {/* Left Section */}
       <div className="navbar-left">
-        <button className="sidebar-toggle-btn" onClick={toggleSidebar}>
+        <button className="sidebar-toggle-btn" onClick={toggleSidebar} type="button" aria-label="Toggle navigation">
           <Menu size={22} />
         </button>
         <h1 className="navbar-title">Admin Control Panel</h1>
@@ -32,7 +32,7 @@ export default function AdminNavbar({ toggleSidebar }) {
 
       {/* Right Section */}
       <div className="navbar-right">
-        <button className="navbar-icon-btn">
+        <button className="navbar-icon-btn" type="button" aria-label="Notifications">
           <Bell size={20} />
         </button>
         <div className="navbar-profile">

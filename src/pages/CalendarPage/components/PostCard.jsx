@@ -86,6 +86,14 @@ export default function PostCard({ post, onClick, draggable = true, compact = fa
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   };
 
+  const handleKeyDown = (event) => {
+    if (!onClick) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -93,7 +101,11 @@ export default function PostCard({ post, onClick, draggable = true, compact = fa
       {...(draggable ? listeners : {})}
       {...(draggable ? attributes : {})}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       className={`post-card ${compact ? 'compact' : ''} ${isDrag || isDragging ? 'dragging' : ''}`}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label="Open post details"
     >
       {/* Media Thumbnail */}
       {post.generations?.storage_path && (
@@ -101,7 +113,7 @@ export default function PostCard({ post, onClick, draggable = true, compact = fa
           {post.generations.media_type === 'video' ? (
             <video src={post.generations.storage_path} />
           ) : (
-            <img src={post.generations.storage_path} alt="" />
+            <img src={post.generations.storage_path} alt="Post media preview" />
           )}
         </div>
       )}

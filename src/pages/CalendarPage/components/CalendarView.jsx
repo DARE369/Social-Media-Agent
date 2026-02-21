@@ -17,7 +17,9 @@ export default function CalendarView({
   onPostClick,
   onPostReschedule,
   onGhostSlotClick,
+  onGhostSlotDismiss,
   onDateChange,
+  allowDragDrop = true,
 }) {
   const [activePost, setActivePost] = useState(null);
 
@@ -72,11 +74,17 @@ export default function CalendarView({
 
   // Drag and drop handlers
   const handleDragStart = (event) => {
+    if (!allowDragDrop) return;
     const post = posts.find(p => p.id === event.active.id);
     setActivePost(post);
   };
 
   const handleDragEnd = (event) => {
+    if (!allowDragDrop) {
+      setActivePost(null);
+      return;
+    }
+
     const { active, over } = event;
     
     if (over && active.id !== over.id) {
@@ -106,17 +114,17 @@ export default function CalendarView({
       <div className="calendar-view-container">
         {/* Calendar Navigation */}
         <div className="calendar-nav">
-          <button className="btn-nav" onClick={handlePrevious}>
+          <button className="btn-nav" onClick={handlePrevious} type="button">
             <ChevronLeft size={20} />
           </button>
           
           <h2 className="calendar-title">{getTitle()}</h2>
           
-          <button className="btn-nav" onClick={handleNext}>
+          <button className="btn-nav" onClick={handleNext} type="button">
             <ChevronRight size={20} />
           </button>
           
-          <button className="btn-today" onClick={handleToday}>
+          <button className="btn-today" onClick={handleToday} type="button">
             Today
           </button>
         </div>
@@ -129,7 +137,9 @@ export default function CalendarView({
             ghostSlots={ghostSlots}
             onPostClick={onPostClick}
             onGhostSlotClick={onGhostSlotClick}
+            onGhostSlotDismiss={onGhostSlotDismiss}
             selectedDate={selectedDate}
+            allowDragDrop={allowDragDrop}
           />
         )}
 
@@ -140,6 +150,7 @@ export default function CalendarView({
             ghostSlots={ghostSlots}
             onPostClick={onPostClick}
             onGhostSlotClick={onGhostSlotClick}
+            onGhostSlotDismiss={onGhostSlotDismiss}
           />
         )}
 
@@ -150,6 +161,7 @@ export default function CalendarView({
             ghostSlots={ghostSlots}
             onPostClick={onPostClick}
             onGhostSlotClick={onGhostSlotClick}
+            onGhostSlotDismiss={onGhostSlotDismiss}
           />
         )}
       </div>
@@ -158,7 +170,7 @@ export default function CalendarView({
       <DragOverlay>
         {activePost && (
           <div className="drag-overlay-post">
-            <PostCard post={activePost} isDragging />
+            <PostCard post={activePost} isDragging draggable={false} />
           </div>
         )}
       </DragOverlay>
@@ -169,7 +181,7 @@ export default function CalendarView({
 // ============================================================================
 // MONTH VIEW
 // ============================================================================
-function MonthView({ dates, posts, ghostSlots, onPostClick, onGhostSlotClick, selectedDate }) {
+function MonthView({ dates, posts, ghostSlots, onPostClick, onGhostSlotClick, onGhostSlotDismiss, selectedDate, allowDragDrop }) {
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const today = new Date();
 
@@ -200,6 +212,8 @@ function MonthView({ dates, posts, ghostSlots, onPostClick, onGhostSlotClick, se
               isOtherMonth={isOtherMonth}
               onPostClick={onPostClick}
               onGhostSlotClick={onGhostSlotClick}
+              onGhostSlotDismiss={onGhostSlotDismiss}
+              allowDragDrop={allowDragDrop}
             />
           );
         })}
@@ -211,7 +225,7 @@ function MonthView({ dates, posts, ghostSlots, onPostClick, onGhostSlotClick, se
 // ============================================================================
 // WEEK VIEW
 // ============================================================================
-function WeekView({ dates, posts, ghostSlots, onPostClick, onGhostSlotClick }) {
+function WeekView({ dates, posts, ghostSlots, onPostClick, onGhostSlotClick, onGhostSlotDismiss }) {
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const today = new Date();
 
@@ -237,6 +251,7 @@ function WeekView({ dates, posts, ghostSlots, onPostClick, onGhostSlotClick }) {
                     post={post}
                     onClick={() => onPostClick(post)}
                     compact
+                    draggable={false}
                   />
                 ))}
                 
@@ -245,6 +260,7 @@ function WeekView({ dates, posts, ghostSlots, onPostClick, onGhostSlotClick }) {
                     key={slot.id}
                     ghostSlot={slot}
                     onClick={() => onGhostSlotClick(slot)}
+                    onDismiss={onGhostSlotDismiss}
                     compact
                   />
                 ))}
@@ -260,7 +276,7 @@ function WeekView({ dates, posts, ghostSlots, onPostClick, onGhostSlotClick }) {
 // ============================================================================
 // DAY VIEW
 // ============================================================================
-function DayView({ date, posts, ghostSlots, onPostClick, onGhostSlotClick }) {
+function DayView({ date, posts, ghostSlots, onPostClick, onGhostSlotClick, onGhostSlotDismiss }) {
   const dayPosts = getPostsForDate(posts, date);
   const dayGhostSlots = getGhostSlotsForDate(ghostSlots, date);
   
@@ -294,6 +310,7 @@ function DayView({ date, posts, ghostSlots, onPostClick, onGhostSlotClick }) {
                     post={post}
                     onClick={() => onPostClick(post)}
                     showTime
+                    draggable={false}
                   />
                 ))}
                 
@@ -302,6 +319,7 @@ function DayView({ date, posts, ghostSlots, onPostClick, onGhostSlotClick }) {
                     key={slot.id}
                     ghostSlot={slot}
                     onClick={() => onGhostSlotClick(slot)}
+                    onDismiss={onGhostSlotDismiss}
                     showTime
                   />
                 ))}
@@ -317,16 +335,17 @@ function DayView({ date, posts, ghostSlots, onPostClick, onGhostSlotClick }) {
 // ============================================================================
 // CALENDAR DAY (Droppable Cell)
 // ============================================================================
-function CalendarDay({ date, posts, ghostSlots, isToday, isOtherMonth, onPostClick, onGhostSlotClick }) {
+function CalendarDay({ date, posts, ghostSlots, isToday, isOtherMonth, onPostClick, onGhostSlotClick, onGhostSlotDismiss, allowDragDrop }) {
   const dateStr = date.toISOString().split('T')[0];
   const { setNodeRef, isOver } = useDroppable({
     id: `date-${dateStr}`,
+    disabled: !allowDragDrop,
   });
 
   return (
     <div
       ref={setNodeRef}
-      className={`calendar-day ${isToday ? 'today' : ''} ${isOtherMonth ? 'other-month' : ''} ${isOver ? 'drop-target' : ''}`}
+      className={`calendar-day ${isToday ? 'today' : ''} ${isOtherMonth ? 'other-month' : ''} ${allowDragDrop && isOver ? 'drop-target' : ''}`}
     >
       <div className="day-number">{date.getDate()}</div>
       
@@ -336,7 +355,7 @@ function CalendarDay({ date, posts, ghostSlots, isToday, isOtherMonth, onPostCli
             key={post.id}
             post={post}
             onClick={() => onPostClick(post)}
-            draggable
+            draggable={allowDragDrop}
           />
         ))}
         
@@ -345,6 +364,7 @@ function CalendarDay({ date, posts, ghostSlots, isToday, isOtherMonth, onPostCli
             key={slot.id}
             ghostSlot={slot}
             onClick={() => onGhostSlotClick(slot)}
+            onDismiss={onGhostSlotDismiss}
           />
         ))}
       </div>

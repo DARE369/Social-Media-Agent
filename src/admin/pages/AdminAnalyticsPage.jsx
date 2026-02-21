@@ -174,7 +174,7 @@ export default function AdminAnalyticsPage() {
             )}
 
             <div className="export-buttons">
-              <button onClick={() => exportCSV(generations, "generations.csv")}>Export CSV</button>
+              <button onClick={() => exportCSV(generations, "generations.csv")} type="button">Export CSV</button>
             </div>
           </div>
         </div>

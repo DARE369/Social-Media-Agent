@@ -113,7 +113,7 @@ export default function BulkScheduleModal({ onClose, onComplete }) {
               Schedule multiple posts at optimal times
             </p>
           </div>
-          <button className="btn-close" onClick={onClose}>
+          <button className="btn-close" onClick={onClose} type="button">
             <X size={20} />
           </button>
         </div>
@@ -146,6 +146,14 @@ export default function BulkScheduleModal({ onClose, onComplete }) {
                         key={draft.id}
                         className={`draft-selection-card ${isSelected ? 'selected' : ''}`}
                         onClick={() => toggleDraft(draft.id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            toggleDraft(draft.id);
+                          }
+                        }}
                       >
                         {/* Selection Checkbox */}
                         <div className={`selection-checkbox ${isSelected ? 'checked' : ''}`}>
@@ -184,6 +192,7 @@ export default function BulkScheduleModal({ onClose, onComplete }) {
                     <button
                       className={scheduleMode === 'auto' ? 'active' : ''}
                       onClick={() => setScheduleMode('auto')}
+                      type="button"
                     >
                       <Wand2 size={16} />
                       Auto (AI Suggests Times)
@@ -193,6 +202,7 @@ export default function BulkScheduleModal({ onClose, onComplete }) {
                       onClick={() => setScheduleMode('manual')}
                       disabled
                       title="Coming soon"
+                      type="button"
                     >
                       <Calendar size={16} />
                       Manual (Pick Times)
@@ -275,13 +285,14 @@ export default function BulkScheduleModal({ onClose, onComplete }) {
         <div className="modal-footer">
           {step === 1 && (
             <>
-              <button className="btn-secondary" onClick={onClose}>
+              <button className="btn-secondary" onClick={onClose} type="button">
                 Cancel
               </button>
               <button
                 className="btn-primary"
                 onClick={handleAutoSchedule}
                 disabled={selectedDrafts.length === 0 || loading}
+                type="button"
               >
                 {loading ? 'Generating Schedule...' : `Schedule ${selectedDrafts.length} Posts`}
               </button>
@@ -290,13 +301,14 @@ export default function BulkScheduleModal({ onClose, onComplete }) {
 
           {step === 2 && (
             <>
-              <button className="btn-secondary" onClick={() => setStep(1)}>
+              <button className="btn-secondary" onClick={() => setStep(1)} type="button">
                 Back
               </button>
               <button
                 className="btn-primary"
                 onClick={handleConfirm}
                 disabled={loading}
+                type="button"
               >
                 {loading ? 'Scheduling...' : 'Confirm Schedule'}
               </button>

@@ -52,6 +52,13 @@ export default function SessionHistoryRail({ isOpen, onClose, onOpen }) {
     }
   };
 
+  const handleSessionKeyDown = (event, sessionId) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleSelect(sessionId);
+    }
+  };
+
   const formatRelative = (dateString) => {
     const date    = new Date(dateString);
     const diffMs  = Date.now() - date.getTime();
@@ -138,8 +145,10 @@ export default function SessionHistoryRail({ isOpen, onClose, onOpen }) {
                 <div
                   key={session.id}
                   className={`session-item ${isActive ? 'active' : ''}`}
-                  role="listitem"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleSelect(session.id)}
+                  onKeyDown={(event) => handleSessionKeyDown(event, session.id)}
                   aria-current={isActive ? 'true' : undefined}
                   title={session.title}
                 >
@@ -160,6 +169,7 @@ export default function SessionHistoryRail({ isOpen, onClose, onOpen }) {
                     onClick={(e) => handleDelete(e, session.id)}
                     aria-label={`Delete session "${session.title}"`}
                     title="Delete session"
+                    type="button"
                   >
                     <Trash2 size={13} />
                   </button>

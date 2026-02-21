@@ -7,6 +7,7 @@ import { AuthProvider } from './Context/AuthContext';
 import './styles/theme.css'; // Base theme styles (light/dark)
 import './styles/variables.css';
 import './styles/global.css'; 
+import './styles/responsive-contract.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

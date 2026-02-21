@@ -40,19 +40,21 @@ export default function PublicationModal({ item, onClose, onConfirm }) {
         <div className="pub-controls">
           <div className="pub-header">
             <h2>Publication Wizard</h2>
-            <button onClick={onClose}><X size={20} /></button>
+            <button onClick={onClose} type="button" aria-label="Close publication modal"><X size={20} /></button>
           </div>
 
           <div className="pub-tabs">
             <button 
               className={`pub-tab ${mode === 'schedule' ? 'active' : ''}`} 
               onClick={() => setMode('schedule')}
+              type="button"
             >
               <Calendar size={14} /> Schedule
             </button>
             <button 
               className={`pub-tab ${mode === 'now' ? 'active' : ''}`} 
               onClick={() => setMode('now')}
+              type="button"
             >
               <Send size={14} /> Post Now
             </button>
@@ -104,8 +106,8 @@ export default function PublicationModal({ item, onClose, onConfirm }) {
           </div>
 
           <div className="pub-footer">
-            <button className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn-primary" onClick={handleSave}>
+            <button className="btn-secondary" onClick={onClose} type="button">Cancel</button>
+            <button className="btn-primary" onClick={handleSave} type="button">
               {mode === 'now' ? 'Post Immediately' : 'Confirm Schedule'}
             </button>
           </div>

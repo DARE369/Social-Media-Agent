@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../Context/AuthContext";
 import AuthLayout from "../../layouts/AuthLayout";
+import { APP_ROOT_PATH } from "../../utils/authRouting";
 
 function GoogleIcon() {
   return (
@@ -77,7 +78,7 @@ export default function Register() {
     try {
       await register(email, password);
       // Send to onboarding â€” first-time setup captures brand tone + industry
-      navigate("/app/dashboard");
+      navigate(APP_ROOT_PATH);
     } catch (err) {
       setError(err.message || "Failed to create account. Please try again.");
     } finally {

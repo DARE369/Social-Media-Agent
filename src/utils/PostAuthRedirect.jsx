@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { getUserProfileAndRole } from "../services/authService";
+import AuthLoadingOverlay from "../components/Shared/AuthLoadingOverlay";
+import { resolvePostAuthPath } from "./authRouting";
 
 export default function PostAuthRedirect() {
   const [redirectPath, setRedirectPath] = useState(null);
@@ -16,11 +18,18 @@ export default function PostAuthRedirect() {
 
         if (!user) {
           setRedirectPath("/login");
-        } else if (role === "admin") {
-          setRedirectPath("/app/admin");
-        } else {
-          setRedirectPath("/app/dashboard");
+          return;
         }
+
+        const intendedPath = sessionStorage.getItem("socialai-redirect-after-login");
+        sessionStorage.removeItem("socialai-redirect-after-login");
+
+        setRedirectPath(
+          resolvePostAuthPath({
+            role,
+            intendedPath,
+          })
+        );
       } catch (e) {
         console.error("PostAuthRedirect error:", e);
         if (mounted) setRedirectPath("/login");
@@ -37,9 +46,10 @@ export default function PostAuthRedirect() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Redirecting based on role...</p>
-      </div>
+      <AuthLoadingOverlay
+        title="Preparing your workspace"
+        description="Matching your account role and opening the right dashboard."
+      />
     );
   }
 

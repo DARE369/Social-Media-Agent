@@ -2,45 +2,73 @@
 import React, { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { getUserProfileAndRole } from "../services/authService";
+import { useAuth } from "../Context/AuthContext";
+import AuthLoadingOverlay from "../components/Shared/AuthLoadingOverlay";
+import { USER_HOME_PATH } from "./authRouting";
 
 export default function ProtectedRoute({ children, requireAdmin = false }) {
-  const [status, setStatus] = useState({ loading: true, isAuth: false, isAdmin: false });
+  const { user, loading: authLoading } = useAuth();
+  const [adminStatus, setAdminStatus] = useState({
+    loading: requireAdmin,
+    isAdmin: false,
+  });
   const location = useLocation();
 
   useEffect(() => {
     let mounted = true;
 
-    const check = async () => {
+    if (!requireAdmin) {
+      setAdminStatus({ loading: false, isAdmin: false });
+      return () => {
+        mounted = false;
+      };
+    }
+
+    if (authLoading) {
+      setAdminStatus((prev) => ({ ...prev, loading: true }));
+      return () => {
+        mounted = false;
+      };
+    }
+
+    if (!user) {
+      setAdminStatus({ loading: false, isAdmin: false });
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const checkAdminRole = async () => {
       try {
-        const { user, role } = await getUserProfileAndRole();
+        const { role } = await getUserProfileAndRole();
         if (!mounted) return;
 
-        const isAuth = !!user;
         const isAdmin = role === "admin";
-        setStatus({ loading: false, isAuth, isAdmin });
+        setAdminStatus({ loading: false, isAdmin });
       } catch (err) {
         console.error("ProtectedRoute error:", err);
         if (!mounted) return;
-        setStatus({ loading: false, isAuth: false, isAdmin: false });
+        setAdminStatus({ loading: false, isAdmin: false });
       }
     };
 
-    check();
+    checkAdminRole();
 
     return () => {
       mounted = false;
     };
-  }, [location.pathname]);
+  }, [authLoading, user?.id, requireAdmin]);
 
-  if (status.loading) {
+  if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Checking authentication...</p>
-      </div>
+      <AuthLoadingOverlay
+        title="Checking your authentication"
+        description="Securing your session and loading your workspace access."
+      />
     );
   }
 
-  if (!status.isAuth) {
+  if (!user) {
     const intended = `${location.pathname}${location.search}${location.hash}`;
     if (intended && intended !== "/login") {
       sessionStorage.setItem("socialai-redirect-after-login", intended);
@@ -48,8 +76,17 @@ export default function ProtectedRoute({ children, requireAdmin = false }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (requireAdmin && !status.isAdmin) {
-    return <Navigate to="/app/dashboard" replace />;
+  if (requireAdmin && adminStatus.loading) {
+    return (
+      <AuthLoadingOverlay
+        title="Verifying admin access"
+        description="Checking your role permissions before opening the admin workspace."
+      />
+    );
+  }
+
+  if (requireAdmin && !adminStatus.isAdmin) {
+    return <Navigate to={USER_HOME_PATH} replace />;
   }
 
   return children;

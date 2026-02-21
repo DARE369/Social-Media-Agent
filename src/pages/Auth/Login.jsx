@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../Context/AuthContext";
 import AuthLayout from "../../layouts/AuthLayout";
+import { APP_ROOT_PATH } from "../../utils/authRouting";
 
 // Google SVG icon — inline so no dependency needed
 function GoogleIcon() {
@@ -58,7 +59,7 @@ export default function Login() {
     setLoading("email");
     try {
       await login(email, password);
-      navigate("/app/dashboard");
+      navigate(APP_ROOT_PATH);
     } catch {
       setError("Invalid email or password. Please check your details and try again.");
     } finally {

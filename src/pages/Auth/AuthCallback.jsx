@@ -5,6 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabaseClient';
+import { APP_ROOT_PATH, resolveRole } from '../../utils/authRouting';
 import './AuthCallback.css';
 
 export default function AuthCallback() {
@@ -59,12 +60,24 @@ export default function AuthCallback() {
 
         if (profileError) {
           console.error('[AuthCallback] profile check failed:', profileError.message);
-          if (!cancelled) navigate('/app/dashboard', { replace: true });
+          if (!cancelled) navigate(APP_ROOT_PATH, { replace: true });
           return;
         }
 
         // Create profile for first-time users.
         if (!profile) {
+          const inferredRole =
+            resolveRole({
+              metadataRole: [
+                user?.app_metadata?.role ?? user?.app_metadata?.roles ?? null,
+                user?.user_metadata?.role ?? user?.user_metadata?.roles ?? null,
+              ],
+              metadataIsAdmin: [
+                user?.app_metadata?.is_admin ?? user?.app_metadata?.isAdmin ?? null,
+                user?.user_metadata?.is_admin ?? user?.user_metadata?.isAdmin ?? null,
+              ],
+            }) ?? 'user';
+
           const fullName =
             user.user_metadata?.full_name ||
             user.user_metadata?.name ||
@@ -75,7 +88,7 @@ export default function AuthCallback() {
             id: user.id,
             full_name: fullName,
             email: user.email,
-            role: 'user',
+            role: inferredRole,
             credits: 100,
             status: 'active',
           });
@@ -87,11 +100,7 @@ export default function AuthCallback() {
 
         if (cancelled) return;
 
-        const intended =
-          sessionStorage.getItem('socialai-redirect-after-login') || '/app/dashboard';
-        sessionStorage.removeItem('socialai-redirect-after-login');
-
-        navigate(intended, { replace: true });
+        navigate(APP_ROOT_PATH, { replace: true });
       } catch (err) {
         console.error('[AuthCallback]', err);
         if (!cancelled) {

@@ -7,6 +7,7 @@ import UserSidebar from '../../components/User/UserSidebar';
 import SessionHistoryRail from '../../components/Generate/SessionHistoryRail';
 import GenerationCanvas from '../../components/Generate/GenerationCanvas';
 import PostProductionPanel from '../../components/Generate/PostProductionPanel';
+import VideoProcessingModal, { VideoStatusBar } from '../../components/Generate/VideoProcessingModal';
 import BrandKitOnboardingModal from '../../components/BrandKit/BrandKitOnboardingModal';
 import useBrandKitStore from '../../stores/BrandKitStore';
 import { useAuth } from '../../Context/AuthContext';
@@ -22,10 +23,15 @@ import '../../styles/UserDashboard.css'; // Ensures dashboard shell tokens/class
 export default function GeneratePageV2() {
   const { user } = useAuth();
   const {
+    activeGenerations,
     selectedGeneration,
     selectGeneration,
     subscribeToGenerations,
     resetPostProduction,
+    videoJobState,
+    setVideoJobMinimized,
+    dismissVideoJob,
+    startVideoGeneration,
   } = useSessionStore();
   const brandKit = useBrandKitStore((s) => s.brandKit);
   const loadBrandKit = useBrandKitStore((s) => s.loadBrandKit);
@@ -69,6 +75,18 @@ export default function GeneratePageV2() {
   const handleClosePostPanel = () => {
     setPostPanelOpen(false);
     selectGeneration(null);
+  };
+
+  const handleViewCompletedVideo = () => {
+    const completedVideo = activeGenerations.find((item) => (
+      item.id === videoJobState.generationId
+      && item.media_type === 'video'
+      && item.status === 'completed'
+    ));
+    if (completedVideo) {
+      selectGeneration(completedVideo);
+    }
+    dismissVideoJob();
   };
 
   return (
@@ -130,6 +148,35 @@ export default function GeneratePageV2() {
           userId={user?.id}
           onClose={() => setShowOnboarding(false)}
         />
+      )}
+
+      {videoJobState.status && (
+        videoJobState.isMinimized ? (
+          <VideoStatusBar
+            status={videoJobState.status}
+            progress={videoJobState.progress}
+            onExpand={() => setVideoJobMinimized(false)}
+            onDismiss={dismissVideoJob}
+          />
+        ) : (
+          <VideoProcessingModal
+            jobId={videoJobState.jobId}
+            prompt={videoJobState.prompt}
+            status={videoJobState.status}
+            progress={videoJobState.progress}
+            videoUrl={videoJobState.videoUrl}
+            onMinimize={() => setVideoJobMinimized(true)}
+            onDismiss={dismissVideoJob}
+            onRetry={async () => {
+              try {
+                await startVideoGeneration(videoJobState.prompt);
+              } catch (_err) {
+                // Error state is already handled in the store.
+              }
+            }}
+            onViewInCanvas={handleViewCompletedVideo}
+          />
+        )
       )}
     </div>
   );

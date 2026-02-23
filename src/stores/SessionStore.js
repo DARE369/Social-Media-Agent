@@ -1,62 +1,109 @@
 // ============================================================================
 // ZUSTAND SESSION STORE - SocialAI
-// Fixed: status mismatch, success message, hashtag prefix, panel reset
+// Freepik-backed image/video/edit flows + async video polling state
 // ============================================================================
 
 import { create } from 'zustand';
+import toast from 'react-hot-toast';
 import { supabase } from '../services/supabaseClient';
 import { POST_STATUS, GENERATION_STATUS } from '../constants/statusEnums';
 import {
   generateImages,
-  generateVideo,
+  editImage,
+  createVideoJob,
+  checkVideoJobStatus,
+} from '../services/freepik.service';
+import {
   enhancePrompt as apiEnhancePrompt,
   generateCaption as apiGenerateCaption,
   optimizeForSEO as apiOptimizeSEO,
 } from '../services/ApiService';
+import { loadBrandKit } from '../services/brandKitLoader';
 
 export { GENERATION_STATUS, POST_STATUS } from '../constants/statusEnums';
 
-// -- Default post-production state (extracted for easy reset) -----------------
+const VIDEO_POLL_INTERVAL_MS = 8000;
+
 const DEFAULT_POST_PRODUCTION = {
-  caption:           '',
-  hashtags:          [],
-  seoScore:          0,
+  caption: '',
+  hashtags: [],
+  seoScore: 0,
   selectedPlatforms: [],
-  scheduleDate:      null,
+  scheduleDate: null,
 };
 
-// -- Helpers ------------------------------------------------------------------
-/** Ensure every hashtag starts with # */
-const normalizeHashtags = (tags = []) =>
-  tags.map(t => (t.startsWith('#') ? t : `#${t}`));
+const DEFAULT_VIDEO_JOB_STATE = {
+  jobId: null,
+  generationId: null,
+  prompt: '',
+  status: null, // submitting | processing | completed | failed | null
+  progress: 0,
+  videoUrl: null,
+  isMinimized: false,
+  pollInterval: null,
+};
 
-// ============================================================================
+const normalizeHashtags = (tags = []) => tags.map((tag) => (tag.startsWith('#') ? tag : `#${tag}`));
+
+const STAGE_PROGRESS = {
+  'Loading brand kit...': { pct: 5, label: 'Loading brand kit...' },
+  'Planning content...': { pct: 15, label: 'Planning your content...' },
+  'Generating content plan...': { pct: 30, label: 'Generating content plan...' },
+  'Quality check...': { pct: 40, label: 'Checking brand guardrails...' },
+  'Generating image...': { pct: 60, label: 'Creating your image...' },
+};
+
+const mapStageProgress = (stage = '') => {
+  if (STAGE_PROGRESS[stage]) return STAGE_PROGRESS[stage];
+  if (stage.startsWith('Generating slide')) return { pct: 62, label: stage };
+  return { pct: 50, label: stage || 'Generating...' };
+};
+
+async function fetchSessionGenerations(sessionId) {
+  if (!sessionId) return [];
+  const { data, error } = await supabase
+    .from('generations')
+    .select('*')
+    .eq('session_id', sessionId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+async function ensureSession(get, userInput) {
+  const { activeSession, createSession } = get();
+  if (activeSession?.id) return activeSession;
+  const autoTitle = userInput.slice(0, 50) + (userInput.length > 50 ? '...' : '');
+  return createSession(autoTitle);
+}
+
 const useSessionStore = create((set, get) => ({
-
   // -- STATE ------------------------------------------------------------------
-  sessions:          [],
-  activeSession:     null,
+  sessions: [],
+  activeSession: null,
   activeGenerations: [],
   selectedGeneration: null,
 
-  isGenerating:      false,
+  isGenerating: false,
   generationProgress: 0,
-  generationStage:   null,
+  progressLabel: null,
+  generationStage: null,
   pendingClarifications: {},
-  error:             null,
+  error: null,
+
+  videoJobState: { ...DEFAULT_VIDEO_JOB_STATE },
 
   settings: {
-    mediaType:   'image',
+    mediaType: 'image', // image | video | edit
     aspectRatio: '1:1',
-    batchSize:   1,
+    batchSize: 1,
     contentType: 'single',
   },
 
   postProduction: { ...DEFAULT_POST_PRODUCTION },
 
-
   // -- SESSION MANAGEMENT ----------------------------------------------------
-
   fetchSessions: async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -90,9 +137,9 @@ const useSessionStore = create((set, get) => ({
 
       if (error) throw error;
 
-      set(state => ({
-        sessions:          [data, ...state.sessions],
-        activeSession:     data,
+      set((state) => ({
+        sessions: [data, ...state.sessions],
+        activeSession: data,
         activeGenerations: [],
         selectedGeneration: null,
       }));
@@ -107,22 +154,15 @@ const useSessionStore = create((set, get) => ({
 
   switchSession: async (sessionId) => {
     try {
-      const session = get().sessions.find(s => s.id === sessionId);
+      const session = get().sessions.find((item) => item.id === sessionId);
       if (!session) throw new Error('Session not found');
-
-      const { data, error } = await supabase
-        .from('generations')
-        .select('*')
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
+      const generations = await fetchSessionGenerations(sessionId);
 
       set({
-        activeSession:     session,
-        activeGenerations: data || [],
+        activeSession: session,
+        activeGenerations: generations,
         selectedGeneration: null,
-        error:             null,
+        error: null,
       });
     } catch (err) {
       console.error('switchSession:', err);
@@ -132,14 +172,11 @@ const useSessionStore = create((set, get) => ({
 
   deleteSession: async (sessionId) => {
     try {
-      const { error } = await supabase
-        .from('sessions')
-        .delete()
-        .eq('id', sessionId);
+      const { error } = await supabase.from('sessions').delete().eq('id', sessionId);
       if (error) throw error;
 
-      set(state => ({
-        sessions: state.sessions.filter(s => s.id !== sessionId),
+      set((state) => ({
+        sessions: state.sessions.filter((item) => item.id !== sessionId),
         ...(state.activeSession?.id === sessionId
           ? { activeSession: null, activeGenerations: [], selectedGeneration: null }
           : {}),
@@ -159,137 +196,104 @@ const useSessionStore = create((set, get) => ({
         .eq('id', sessionId);
       if (error) throw error;
 
-      set(state => ({
-        sessions: state.sessions.map(s => s.id === sessionId ? { ...s, title } : s),
-        activeSession:
-          state.activeSession?.id === sessionId
-            ? { ...state.activeSession, title }
-            : state.activeSession,
+      set((state) => ({
+        sessions: state.sessions.map((item) => (item.id === sessionId ? { ...item, title } : item)),
+        activeSession: state.activeSession?.id === sessionId
+          ? { ...state.activeSession, title }
+          : state.activeSession,
       }));
     } catch (err) {
       console.error('updateSessionTitle:', err);
     }
   },
 
-
   // -- GENERATION ACTIONS ----------------------------------------------------
-
   startGeneration: async (userInput) => {
-    const { settings, activeSession, createSession, pendingClarifications } = get();
-    set({ isGenerating: true, error: null, generationProgress: 0, generationStage: null });
+    const prompt = String(userInput || '').trim();
+    if (!prompt) return;
+
+    const { settings } = get();
+
+    if (settings.mediaType === 'video') {
+      await get().startVideoGeneration(prompt);
+      return;
+    }
+
+    if (settings.mediaType === 'edit') {
+      throw new Error('Edit mode requires a source image. Use startEditGeneration.');
+    }
+
+    set({
+      isGenerating: true,
+      error: null,
+      generationProgress: 0,
+      progressLabel: 'Preparing generation...',
+      generationStage: null,
+    });
 
     try {
-      // Ensure session exists.
-      let session = activeSession;
-      if (!session) {
-        const autoTitle = userInput.slice(0, 50) + (userInput.length > 50 ? '...' : '');
-        session = await createSession(autoTitle);
-      }
-
+      const session = await ensureSession(get, prompt);
+      const { pendingClarifications } = get();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Video generation keeps the existing direct flow.
-      if (settings.mediaType === 'video') {
-        set({ generationStage: 'Generating video...', generationProgress: 20 });
+      const brandKit = await loadBrandKit(user.id);
+      const { registerImageGenerator, runGenerationPipeline } = await import('../services/generationPipeline');
 
-        const { data: created, error: insertError } = await supabase
-          .from('generations')
-          .insert({
-            user_id: user.id,
-            session_id: session.id,
-            prompt: userInput,
-            media_type: 'video',
-            status: GENERATION_STATUS.PROCESSING,
-            progress: 0,
-            metadata: {
-              aspect_ratio: settings.aspectRatio,
-            },
-          })
-          .select()
-          .single();
-        if (insertError) throw insertError;
-
-        set(state => ({
-          activeGenerations: [...state.activeGenerations, created],
-        }));
-
-        const video = await generateVideo({
-          prompt: userInput,
-          aspectRatio: settings.aspectRatio,
-          duration: 4,
+      registerImageGenerator(async (promptText, aspectRatio) => {
+        set({
+          generationProgress: 68,
+          progressLabel: 'Requesting Freepik image...',
+          generationStage: 'Generating image...',
         });
 
-        await supabase
-          .from('generations')
-          .update({
-            status: GENERATION_STATUS.COMPLETED,
-            progress: 100,
-            storage_path: video.url,
-            metadata: {
-              aspect_ratio: settings.aspectRatio,
-              width: video.width,
-              height: video.height,
-              duration: video.duration,
-            },
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', created.id);
-      } else {
-        const { registerImageGenerator, runGenerationPipeline } =
-          await import('../services/generationPipeline');
+        const images = await generateImages({
+          prompt: promptText,
+          aspectRatio,
+          numImages: 1,
+          brandKit,
+        });
 
-        registerImageGenerator(async (prompt, aspectRatio) => {
-          const images = await generateImages({
-            prompt,
-            aspectRatio,
-            numImages: 1,
+        const first = images?.[0];
+        if (!first?.url) throw new Error('Freepik returned no image URL');
+
+        set({
+          generationProgress: 90,
+          progressLabel: 'Uploading to Supabase storage...',
+          generationStage: 'Uploading...',
+        });
+
+        return first.url;
+      });
+
+      await runGenerationPipeline({
+        userInput: prompt,
+        clarifications: pendingClarifications ?? {},
+        sessionId: session.id,
+        userId: user.id,
+        settings: {
+          ...settings,
+          contentType: settings.contentType ?? 'single',
+          mediaType: 'image',
+        },
+        onProgress: (stage) => {
+          const mapped = mapStageProgress(stage);
+          set({
+            generationProgress: mapped.pct,
+            progressLabel: mapped.label,
+            generationStage: stage,
           });
-          const first = images?.[0];
-          if (!first?.url) {
-            throw new Error('Image provider returned no URL');
-          }
-          return first.url;
-        });
-
-        const progressMap = {
-          'Loading brand kit...': 5,
-          'Planning content...': 15,
-          'Generating content plan...': 30,
-          'Quality check...': 40,
-          'Generating image...': 60,
-        };
-
-        await runGenerationPipeline({
-          userInput,
-          clarifications: pendingClarifications ?? {},
-          sessionId: session.id,
-          userId: user.id,
-          settings: {
-            ...settings,
-            contentType: settings.contentType ?? 'single',
-          },
-          onProgress: (stage) => {
-            const pct = progressMap[stage]
-              ?? (stage.startsWith('Generating slide') ? 60 : 50);
-            set({ generationProgress: pct, generationStage: stage });
-          },
-        });
-      }
+        },
+      });
 
       await supabase
         .from('sessions')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', session.id);
 
-      const { data: refreshed } = await supabase
-        .from('generations')
-        .select('*')
-        .eq('session_id', session.id)
-        .order('created_at', { ascending: true });
-
+      const refreshed = await fetchSessionGenerations(session.id);
       set({
-        activeGenerations: refreshed || get().activeGenerations,
+        activeGenerations: refreshed,
         error: null,
       });
     } catch (err) {
@@ -300,31 +304,366 @@ const useSessionStore = create((set, get) => ({
       set({
         isGenerating: false,
         generationProgress: 0,
+        progressLabel: null,
         generationStage: null,
       });
     }
   },
 
-  enhancePrompt: async (prompt) => {
+  startEditGeneration: async (sourceImageUrl, instruction) => {
+    const cleanSource = String(sourceImageUrl || '').trim();
+    const prompt = String(instruction || '').trim();
+
+    if (!cleanSource) throw new Error('Source image is required for edit mode');
+    if (!prompt) throw new Error('Edit instruction is required');
+
+    set({
+      isGenerating: true,
+      error: null,
+      generationProgress: 8,
+      progressLabel: 'Preparing edit...',
+      generationStage: 'Preparing',
+    });
+
+    let createdGeneration = null;
+
     try {
-      const enhanced = await apiEnhancePrompt(prompt);
-      return enhanced;
+      const session = await ensureSession(get, prompt);
+      const { settings } = get();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const brandKit = await loadBrandKit(user.id);
+
+      const { data: created, error: insertError } = await supabase
+        .from('generations')
+        .insert({
+          user_id: user.id,
+          session_id: session.id,
+          prompt,
+          media_type: 'image',
+          status: GENERATION_STATUS.PROCESSING,
+          progress: 10,
+          metadata: {
+            edit_mode: true,
+            source_image_url: cleanSource,
+            aspect_ratio: settings.aspectRatio,
+            provider: 'freepik',
+          },
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      createdGeneration = created;
+
+      set((state) => ({
+        activeGenerations: [...state.activeGenerations, created],
+        generationProgress: 35,
+        progressLabel: 'Applying Freepik edit...',
+        generationStage: 'Editing image...',
+      }));
+
+      const edited = await editImage({
+        prompt,
+        sourceImageUrl: cleanSource,
+        brandKit,
+        aspectRatio: settings.aspectRatio,
+      });
+
+      set({
+        generationProgress: 88,
+        progressLabel: 'Saving edited image...',
+        generationStage: 'Uploading...',
+      });
+
+      const metadata = {
+        ...(created.metadata || {}),
+        width: edited.width,
+        height: edited.height,
+        provider: edited.provider || 'freepik',
+        freepik_task_id: edited.taskId || null,
+      };
+
+      const { error: updateError } = await supabase
+        .from('generations')
+        .update({
+          status: GENERATION_STATUS.COMPLETED,
+          progress: 100,
+          storage_path: edited.url,
+          metadata,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', created.id);
+
+      if (updateError) throw updateError;
+
+      await supabase
+        .from('sessions')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', session.id);
+
+      const refreshed = await fetchSessionGenerations(session.id);
+      set({
+        activeGenerations: refreshed,
+        error: null,
+      });
     } catch (err) {
-      console.error('enhancePrompt:', err);
-      return prompt; // Return original on failure
+      console.error('startEditGeneration error:', err);
+      if (createdGeneration?.id) {
+        await supabase
+          .from('generations')
+          .update({
+            status: GENERATION_STATUS.FAILED,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', createdGeneration.id);
+      }
+      set({ error: err.message });
+      throw err;
+    } finally {
+      set({
+        isGenerating: false,
+        generationProgress: 0,
+        progressLabel: null,
+        generationStage: null,
+      });
     }
   },
 
+  startVideoGeneration: async (userInput) => {
+    const prompt = String(userInput || '').trim();
+    if (!prompt) return;
+
+    const existingInterval = get().videoJobState.pollInterval;
+    if (existingInterval) clearInterval(existingInterval);
+
+    set((state) => ({
+      isGenerating: true,
+      error: null,
+      generationProgress: 10,
+      progressLabel: 'Queuing video job...',
+      generationStage: 'Video queued',
+      videoJobState: {
+        ...state.videoJobState,
+        ...DEFAULT_VIDEO_JOB_STATE,
+        status: 'submitting',
+        prompt,
+        progress: 10,
+      },
+    }));
+
+    try {
+      const session = await ensureSession(get, prompt);
+      const { settings } = get();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const brandKit = await loadBrandKit(user.id);
+      const videoJob = await createVideoJob({
+        prompt,
+        aspectRatio: settings.aspectRatio,
+        duration: 5,
+        brandKit,
+      });
+
+      const { data: created, error: insertError } = await supabase
+        .from('generations')
+        .insert({
+          user_id: user.id,
+          session_id: session.id,
+          prompt,
+          media_type: 'video',
+          status: GENERATION_STATUS.PROCESSING,
+          progress: 12,
+          metadata: {
+            provider: 'freepik',
+            freepik_job_id: videoJob.jobId,
+            aspect_ratio: settings.aspectRatio,
+          },
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      set((state) => ({
+        activeGenerations: [...state.activeGenerations, created],
+        generationProgress: 15,
+        progressLabel: 'Video job started...',
+        generationStage: 'Processing video...',
+        videoJobState: {
+          ...state.videoJobState,
+          status: 'processing',
+          jobId: videoJob.jobId,
+          generationId: created.id,
+          progress: 15,
+        },
+      }));
+
+      await supabase
+        .from('sessions')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', session.id);
+
+      get().startVideoPolling(videoJob.jobId, created.id);
+    } catch (err) {
+      console.error('startVideoGeneration error:', err);
+      set((state) => ({
+        isGenerating: false,
+        generationProgress: 0,
+        progressLabel: null,
+        generationStage: null,
+        error: err.message,
+        videoJobState: {
+          ...state.videoJobState,
+          status: 'failed',
+          progress: 100,
+          pollInterval: null,
+        },
+      }));
+      throw err;
+    }
+  },
+
+  startVideoPolling: (jobId, generationId) => {
+    if (!jobId) return;
+
+    const existingInterval = get().videoJobState.pollInterval;
+    if (existingInterval) clearInterval(existingInterval);
+
+    const pollOnce = async () => {
+      try {
+        const result = await checkVideoJobStatus({ jobId, generationId });
+        const nextProgress = Math.max(10, Math.min(100, result.progress || 0));
+
+        if (result.status === 'processing') {
+          set((state) => ({
+            isGenerating: true,
+            generationProgress: nextProgress,
+            progressLabel: 'Generating video...',
+            generationStage: 'Processing video...',
+            videoJobState: {
+              ...state.videoJobState,
+              status: 'processing',
+              progress: nextProgress,
+              videoUrl: null,
+            },
+          }));
+          return;
+        }
+
+        if (result.status === 'completed') {
+          const intervalRef = get().videoJobState.pollInterval;
+          if (intervalRef) clearInterval(intervalRef);
+
+          set((state) => ({
+            isGenerating: false,
+            generationProgress: 100,
+            progressLabel: 'Video completed',
+            generationStage: 'Completed',
+            activeGenerations: state.activeGenerations.map((generation) => (
+              generation.id === generationId
+                ? {
+                    ...generation,
+                    status: GENERATION_STATUS.COMPLETED,
+                    progress: 100,
+                    storage_path: result.videoUrl || generation.storage_path,
+                  }
+                : generation
+            )),
+            videoJobState: {
+              ...state.videoJobState,
+              status: 'completed',
+              progress: 100,
+              videoUrl: result.videoUrl,
+              pollInterval: null,
+            },
+          }));
+
+          const { activeSession } = get();
+          if (activeSession?.id) {
+            const refreshed = await fetchSessionGenerations(activeSession.id);
+            set({ activeGenerations: refreshed });
+          }
+          return;
+        }
+
+        const intervalRef = get().videoJobState.pollInterval;
+        if (intervalRef) clearInterval(intervalRef);
+
+        const isMinimized = get().videoJobState.isMinimized;
+        if (isMinimized) {
+          toast.error('Video generation failed. Expand the status bar to retry.', { duration: 8000 });
+        }
+
+        set((state) => ({
+          isGenerating: false,
+          generationProgress: 0,
+          progressLabel: null,
+          generationStage: null,
+          error: result.error || 'Video generation failed',
+          videoJobState: {
+            ...state.videoJobState,
+            status: 'failed',
+            progress: 100,
+            pollInterval: null,
+          },
+        }));
+      } catch (err) {
+        console.error('[VideoPolling] Error:', err);
+      }
+    };
+
+    const intervalId = setInterval(pollOnce, VIDEO_POLL_INTERVAL_MS);
+    set((state) => ({
+      videoJobState: {
+        ...state.videoJobState,
+        jobId,
+        generationId,
+        pollInterval: intervalId,
+      },
+    }));
+
+    pollOnce();
+  },
+
+  dismissVideoJob: () => {
+    const pollInterval = get().videoJobState.pollInterval;
+    if (pollInterval) clearInterval(pollInterval);
+
+    set({
+      isGenerating: false,
+      videoJobState: { ...DEFAULT_VIDEO_JOB_STATE },
+      generationProgress: 0,
+      progressLabel: null,
+      generationStage: null,
+    });
+  },
+
+  setVideoJobMinimized: (isMinimized) => {
+    set((state) => ({
+      videoJobState: {
+        ...state.videoJobState,
+        isMinimized: Boolean(isMinimized),
+      },
+    }));
+  },
+
+  enhancePrompt: async (prompt) => {
+    try {
+      return await apiEnhancePrompt(prompt);
+    } catch (err) {
+      console.error('enhancePrompt:', err);
+      return prompt;
+    }
+  },
 
   // -- POST-PRODUCTION -------------------------------------------------------
-
   selectGeneration: (generation) => {
     set({ selectedGeneration: generation });
   },
 
-  /**
-   * Reset post-production state (called when panel opens with a new selection)
-   */
   resetPostProduction: () => {
     set({ postProduction: { ...DEFAULT_POST_PRODUCTION } });
   },
@@ -335,15 +674,13 @@ const useSessionStore = create((set, get) => ({
 
     try {
       const result = await apiGenerateCaption(selectedGeneration.prompt, platform);
-
-      set(state => ({
+      set((state) => ({
         postProduction: {
           ...state.postProduction,
-          caption:  result.caption  || '',
+          caption: result.caption || '',
           hashtags: normalizeHashtags(result.hashtags || []),
         },
       }));
-
       return result;
     } catch (err) {
       console.error('generateCaption:', err);
@@ -355,20 +692,15 @@ const useSessionStore = create((set, get) => ({
     const { postProduction } = get();
 
     try {
-      const result = await apiOptimizeSEO(
-        postProduction.caption,
-        postProduction.hashtags,
-      );
-
-      set(state => ({
+      const result = await apiOptimizeSEO(postProduction.caption, postProduction.hashtags);
+      set((state) => ({
         postProduction: {
           ...state.postProduction,
-          caption:  result.optimizedCaption  || state.postProduction.caption,
+          caption: result.optimizedCaption || state.postProduction.caption,
           hashtags: normalizeHashtags(result.optimizedHashtags || state.postProduction.hashtags),
           seoScore: result.seoScore || 0,
         },
       }));
-
       return result;
     } catch (err) {
       console.error('optimizeCaption:', err);
@@ -377,7 +709,7 @@ const useSessionStore = create((set, get) => ({
   },
 
   updatePostProduction: (updates) => {
-    set(state => ({
+    set((state) => ({
       postProduction: { ...state.postProduction, ...updates },
     }));
   },
@@ -390,37 +722,31 @@ const useSessionStore = create((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Normalize hashtags before joining
       const normalizedTags = normalizeHashtags(postProduction.hashtags);
-      const hashtagString  = normalizedTags.join(' ');
-      const finalCaption   = postProduction.caption.trim()
+      const hashtagString = normalizedTags.join(' ');
+      const finalCaption = postProduction.caption.trim()
         + (hashtagString ? `\n\n${hashtagString}` : '');
 
       const scheduleDate = postProduction.scheduleDate || new Date().toISOString();
-      // FIXED: was incorrectly checking === 'posted', which never matches
-      const status = postProduction.scheduleDate
-        ? POST_STATUS.SCHEDULED
-        : POST_STATUS.PUBLISHED;
+      const status = postProduction.scheduleDate ? POST_STATUS.SCHEDULED : POST_STATUS.PUBLISHED;
 
-      const posts = postProduction.selectedPlatforms.map(accountId => ({
-        user_id:       user.id,
+      const posts = postProduction.selectedPlatforms.map((accountId) => ({
+        user_id: user.id,
         generation_id: selectedGeneration.id,
-        account_id:    accountId,
-        caption:       finalCaption,
-        scheduled_at:  scheduleDate,
+        account_id: accountId,
+        caption: finalCaption,
+        scheduled_at: scheduleDate,
         status,
       }));
 
       const { error } = await supabase.from('posts').insert(posts);
       if (error) throw error;
 
-      // Reset post-production state on success
       set({
         selectedGeneration: null,
         postProduction: { ...DEFAULT_POST_PRODUCTION },
       });
 
-      // FIXED: correct success message (was always 'Scheduled' due to 'posted' check)
       return {
         success: true,
         message: status === POST_STATUS.PUBLISHED
@@ -434,11 +760,9 @@ const useSessionStore = create((set, get) => ({
     }
   },
 
-
-  // -- SETTINGS -------------------------------------------------------------
-
+  // -- SETTINGS ---------------------------------------------------------------
   updateSettings: (updates) => {
-    set(state => ({
+    set((state) => ({
       settings: { ...state.settings, ...updates },
     }));
   },
@@ -457,9 +781,7 @@ const useSessionStore = create((set, get) => ({
 
   clearError: () => set({ error: null }),
 
-
-  // -- REALTIME --------------------------------------------------------------
-
+  // -- REALTIME ---------------------------------------------------------------
   subscribeToGenerations: (callback) => {
     const channel = supabase
       .channel('generations_updates')
@@ -467,21 +789,59 @@ const useSessionStore = create((set, get) => ({
         'postgres_changes',
         { event: '*', schema: 'public', table: 'generations' },
         (payload) => {
-          const { activeSession } = get();
+          const { activeSession, videoJobState } = get();
 
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             const updated = payload.new;
 
-            // Only apply if it belongs to the current session
             if (updated.session_id === activeSession?.id) {
-              set(state => {
-                const exists = state.activeGenerations.find(g => g.id === updated.id);
+              set((state) => {
+                const exists = state.activeGenerations.find((generation) => generation.id === updated.id);
                 return {
                   activeGenerations: exists
-                    ? state.activeGenerations.map(g => g.id === updated.id ? updated : g)
+                    ? state.activeGenerations.map((generation) => (generation.id === updated.id ? updated : generation))
                     : [...state.activeGenerations, updated],
                 };
               });
+            }
+
+            if (videoJobState.generationId && updated.id === videoJobState.generationId) {
+              if (updated.status === GENERATION_STATUS.COMPLETED && updated.storage_path) {
+                const pollInterval = videoJobState.pollInterval;
+                if (pollInterval) clearInterval(pollInterval);
+
+                set((state) => ({
+                  isGenerating: false,
+                  generationProgress: 100,
+                  progressLabel: 'Video completed',
+                  generationStage: 'Completed',
+                  videoJobState: {
+                    ...state.videoJobState,
+                    status: 'completed',
+                    progress: 100,
+                    videoUrl: updated.storage_path,
+                    pollInterval: null,
+                  },
+                }));
+              }
+
+              if (updated.status === GENERATION_STATUS.FAILED) {
+                const pollInterval = videoJobState.pollInterval;
+                if (pollInterval) clearInterval(pollInterval);
+
+                set((state) => ({
+                  isGenerating: false,
+                  generationProgress: 0,
+                  progressLabel: null,
+                  generationStage: null,
+                  videoJobState: {
+                    ...state.videoJobState,
+                    status: 'failed',
+                    progress: 100,
+                    pollInterval: null,
+                  },
+                }));
+              }
             }
           }
 
@@ -493,21 +853,24 @@ const useSessionStore = create((set, get) => ({
     return () => supabase.removeChannel(channel);
   },
 
-
-  // -- CLEANUP ---------------------------------------------------------------
-
+  // -- CLEANUP ----------------------------------------------------------------
   reset: () => {
+    const pollInterval = get().videoJobState.pollInterval;
+    if (pollInterval) clearInterval(pollInterval);
+
     set({
-      sessions:           [],
-      activeSession:      null,
-      activeGenerations:  [],
+      sessions: [],
+      activeSession: null,
+      activeGenerations: [],
       selectedGeneration: null,
-      isGenerating:       false,
+      isGenerating: false,
       generationProgress: 0,
-      generationStage:    null,
+      progressLabel: null,
+      generationStage: null,
       pendingClarifications: {},
-      error:              null,
-      postProduction:     { ...DEFAULT_POST_PRODUCTION },
+      error: null,
+      videoJobState: { ...DEFAULT_VIDEO_JOB_STATE },
+      postProduction: { ...DEFAULT_POST_PRODUCTION },
     });
   },
 }));

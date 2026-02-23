@@ -1,12 +1,13 @@
 ﻿// src/components/Generate/GenerationCanvas.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { Wand2, Sparkles, Send, Loader2, Square, Film, History } from 'lucide-react';
+import { Wand2, Sparkles, Send, Loader2, Square, Film, History, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useSessionStore from '../../stores/SessionStore';
 import useBrandKitStore from '../../stores/BrandKitStore';
 import { BRAND_KIT_STATUS } from '../../constants/statusEnums';
 import BatchGenerationGrid from './BatchGenerationGrid';
 import IntentClarificationPanel from './IntentClarificationPanel';
+import ImageEditPanel from './ImageEditPanel';
 import { checkIntentAmbiguity } from '../../services/intentExtractor';
 import '../../styles/GenerateV2.css';
 
@@ -24,10 +25,12 @@ export default function GenerationCanvas({ onOpenSessionRail, sessionRailOpen })
     activeGenerations,
     isGenerating,
     generationProgress,
+    progressLabel,
     settings,
     error,
     updateSettings,
     startGeneration,
+    startEditGeneration,
     enhancePrompt: enhancePromptAction,
     selectGeneration,
     clearError,
@@ -48,7 +51,18 @@ export default function GenerationCanvas({ onOpenSessionRail, sessionRailOpen })
   // Show store errors as toasts, then clear them
   useEffect(() => {
     if (error) {
-      toast.error(error, { id: 'store-error' });
+      const lower = error.toLowerCase();
+      if (lower.includes('quota') || lower.includes('rate limit') || lower.includes('429')) {
+        toast.error(
+          <span>
+            Freepik quota reached.{' '}
+            <a href="https://www.freepik.com" target="_blank" rel="noopener noreferrer">Learn more</a>
+          </span>,
+          { id: 'store-error', duration: 8000 },
+        );
+      } else {
+        toast.error(error, { id: 'store-error' });
+      }
       clearError();
     }
   }, [error, clearError]);
@@ -143,6 +157,10 @@ export default function GenerationCanvas({ onOpenSessionRail, sessionRailOpen })
     textareaRef.current?.focus();
   };
 
+  const handleEditSubmit = async ({ sourceImageUrl, instruction }) => {
+    await startEditGeneration(sourceImageUrl, instruction);
+  };
+
   // Group generations by batch_id for display
   const batches = activeGenerations.reduce((acc, gen) => {
     const key = gen.batch_id || gen.id;
@@ -157,7 +175,11 @@ export default function GenerationCanvas({ onOpenSessionRail, sessionRailOpen })
   }));
 
   const hasHistory = batchEntries.length > 0;
-  const pendingCount = settings.mediaType === 'video' ? 1 : settings.batchSize;
+  const pendingCount = settings.mediaType === 'image' ? settings.batchSize : 1;
+  const recentCompletedGenerations = activeGenerations
+    .filter((item) => item?.status === 'completed')
+    .slice()
+    .reverse();
 
   return (
     <main className="generation-canvas">
@@ -243,7 +265,7 @@ export default function GenerationCanvas({ onOpenSessionRail, sessionRailOpen })
         )}
 
         {/* In-progress batch shown while generating */}
-        {isGenerating && (
+        {isGenerating && settings.mediaType !== 'video' && (
           <div className="generation-message" aria-label="Generating...">
             <div className="prompt-bubble generating">
               <div className="prompt-bubble-body">
@@ -278,6 +300,7 @@ export default function GenerationCanvas({ onOpenSessionRail, sessionRailOpen })
                         />
                       </div>
                       <span className="progress-percentage">{generationProgress}%</span>
+                      <span className="progress-label">{progressLabel || 'Generating...'}</span>
                     </div>
                   </div>
                 </div>
@@ -295,7 +318,7 @@ export default function GenerationCanvas({ onOpenSessionRail, sessionRailOpen })
         <div className="input-container" role="region" aria-label="Prompt input">
 
           {/* Settings bar */}
-          <div className="settings-bar">
+          <div className="settings-bar flow-settings-bar">
 
             {/* History toggle */}
             <button
@@ -330,39 +353,52 @@ export default function GenerationCanvas({ onOpenSessionRail, sessionRailOpen })
                   <Film size={13} aria-hidden="true" />
                   <span>Video</span>
                 </button>
+                <button
+                  className={settings.mediaType === 'edit' ? 'active' : ''}
+                  onClick={() => updateSettings({ mediaType: 'edit' })}
+                  disabled={isGenerating}
+                  aria-pressed={settings.mediaType === 'edit'}
+                >
+                  <Pencil size={13} aria-hidden="true" />
+                  <span>Edit</span>
+                </button>
               </div>
             </div>
 
             {/* Content Type Selector */}
-            <div className="content-type-selector" role="group" aria-label="Content type">
-              {['single', 'carousel', 'story'].map((type) => (
-                <button
-                  key={type}
-                  className={`ctype-pill${settings.contentType === type ? ' active' : ''}`}
-                  onClick={() => updateSettings({ contentType: type })}
-                  aria-pressed={settings.contentType === type}
-                  disabled={isGenerating}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
-                </button>
-              ))}
-            </div>
+            {settings.mediaType === 'image' && (
+              <div className="content-type-selector" role="group" aria-label="Content type">
+                {['single', 'carousel', 'story'].map((type) => (
+                  <button
+                    key={type}
+                    className={`ctype-pill${settings.contentType === type ? ' active' : ''}`}
+                    onClick={() => updateSettings({ contentType: type })}
+                    aria-pressed={settings.contentType === type}
+                    disabled={isGenerating}
+                  >
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Aspect ratio */}
-            <div className="setting-group">
-              <label htmlFor="aspect-select">Aspect</label>
-              <select
-                id="aspect-select"
-                value={settings.aspectRatio}
-                onChange={(e) => updateSettings({ aspectRatio: e.target.value })}
-                disabled={isGenerating}
-              >
-                <option value="1:1">1:1 Square</option>
-                <option value="16:9">16:9 Wide</option>
-                <option value="9:16">9:16 Portrait</option>
-                <option value="4:5">4:5 Portrait</option>
-              </select>
-            </div>
+            {settings.mediaType !== 'edit' && (
+              <div className="setting-group">
+                <label htmlFor="aspect-select">Aspect</label>
+                <select
+                  id="aspect-select"
+                  value={settings.aspectRatio}
+                  onChange={(e) => updateSettings({ aspectRatio: e.target.value })}
+                  disabled={isGenerating}
+                >
+                  <option value="1:1">1:1 Square</option>
+                  <option value="16:9">16:9 Wide</option>
+                  <option value="9:16">9:16 Portrait</option>
+                  <option value="4:5">4:5 Portrait</option>
+                </select>
+              </div>
+            )}
 
             {/* Batch size images only */}
             {settings.mediaType === 'image' && (
@@ -387,59 +423,69 @@ export default function GenerationCanvas({ onOpenSessionRail, sessionRailOpen })
           </div>
 
           {/* Prompt input */}
-          <div className="prompt-input-area">
-            <div className="input-wrapper">
-              <textarea
-                ref={textareaRef}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={
-                  activeSession
-                    ? 'Describe your next image...'
-                    : 'Describe your vision...'
-                }
-                rows={1}
-                disabled={isGenerating}
-                aria-label="Prompt"
-                aria-multiline="true"
-              />
+          {settings.mediaType === 'edit' ? (
+            <ImageEditPanel
+              onSubmit={handleEditSubmit}
+              isGenerating={isGenerating}
+              recentGenerations={recentCompletedGenerations}
+            />
+          ) : (
+            <div className="prompt-input-area">
+              <div className="input-wrapper flow-input-wrapper">
+                <textarea
+                  ref={textareaRef}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    settings.mediaType === 'video'
+                      ? 'Describe your next video...'
+                      : activeSession
+                        ? 'Describe your next image...'
+                        : 'Describe your vision...'
+                  }
+                  rows={1}
+                  disabled={isGenerating}
+                  aria-label="Prompt"
+                  aria-multiline="true"
+                />
 
-              <div className="input-actions">
-                {/* Magic Enhance */}
-                <button
-                  type="button"
-                  className={`btn-enhance${isEnhancing ? ' enhancing' : ''}`}
-                  onClick={handleEnhance}
-                  disabled={!prompt.trim() || isEnhancing || isGenerating}
-                  title="Magic Enhance - improve your prompt with AI"
-                  aria-label="Enhance prompt"
-                >
-                  {isEnhancing
-                    ? <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-                    : <Wand2 size={16} aria-hidden="true" />}
-                </button>
+                <div className="input-actions">
+                  {/* Magic Enhance */}
+                  <button
+                    type="button"
+                    className={`btn-enhance${isEnhancing ? ' enhancing' : ''}`}
+                    onClick={handleEnhance}
+                    disabled={!prompt.trim() || isEnhancing || isGenerating}
+                    title="Magic Enhance - improve your prompt with AI"
+                    aria-label="Enhance prompt"
+                  >
+                    {isEnhancing
+                      ? <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                      : <Wand2 size={16} aria-hidden="true" />}
+                  </button>
 
-                {/* Generate */}
-                <button
-                  type="button"
-                  className="btn-send"
-                  onClick={handleSubmit}
-                  disabled={!prompt.trim() || isGenerating}
-                  aria-label={isGenerating ? 'Generating...' : 'Generate'}
-                >
-                  {isGenerating ? (
-                    <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-                  ) : (
-                    <>
-                      <Send size={16} aria-hidden="true" />
-                      <span>Generate</span>
-                    </>
-                  )}
-                </button>
+                  {/* Generate */}
+                  <button
+                    type="button"
+                    className="btn-send"
+                    onClick={handleSubmit}
+                    disabled={!prompt.trim() || isGenerating}
+                    aria-label={isGenerating ? 'Generating...' : 'Generate'}
+                  >
+                    {isGenerating ? (
+                      <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                    ) : (
+                      <>
+                        <Send size={16} aria-hidden="true" />
+                        <span>Generate</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </main>

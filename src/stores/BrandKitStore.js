@@ -4,6 +4,68 @@ import { create } from 'zustand';
 import { supabase } from '../services/supabaseClient';
 import { BRAND_KIT_STATUS, ASSET_STATUS } from '../constants/statusEnums';
 
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+const encodeStoragePath = (value) => value.split('/').map(encodeURIComponent).join('/');
+
+const toReadableUploadError = (error) => {
+  const message = String(error?.message || error || 'Upload failed');
+  const lower = message.toLowerCase();
+  if (lower.includes('bucket') && lower.includes('not found')) {
+    return 'Storage bucket "brand_assets" was not found. Run the Supabase setup migration and redeploy.';
+  }
+  return message;
+};
+
+async function uploadWithProgress(bucket, storagePath, file, onProgress) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('Session expired. Please sign in again.');
+  }
+
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Missing Supabase URL or anon key in frontend environment.');
+  }
+
+  const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucket}/${encodeStoragePath(storagePath)}`;
+
+  await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', uploadUrl, true);
+    xhr.setRequestHeader('Authorization', `Bearer ${session.access_token}`);
+    xhr.setRequestHeader('apikey', SUPABASE_ANON_KEY);
+    xhr.setRequestHeader('x-upsert', 'false');
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      const pct = Math.round((event.loaded / event.total) * 100);
+      if (typeof onProgress === 'function') onProgress(pct);
+    };
+
+    xhr.onerror = () => reject(new Error('Network error during upload.'));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(null);
+        return;
+      }
+
+      let responseError = xhr.responseText || 'Upload failed';
+      try {
+        const parsed = JSON.parse(xhr.responseText || '{}');
+        responseError = parsed.message || parsed.error || responseError;
+      } catch (_err) {
+        // Keep raw response text.
+      }
+
+      reject(new Error(responseError));
+    };
+
+    xhr.send(file);
+  });
+}
+
 const useBrandKitStore = create((set, get) => ({
   // ── State
   brandKit:        null,   // raw brand_kit row from DB
@@ -119,10 +181,11 @@ const useBrandKitStore = create((set, get) => ({
   /**
    * Upload a brand asset file to Supabase Storage and insert DB record.
    */
-  uploadAsset: async (userId, brandKitId, file, metadata = {}) => {
+  uploadAsset: async (userId, brandKitId, file, metadata = {}, options = {}) => {
     const timestamp  = Date.now();
     const assetType  = metadata.asset_type ?? 'other';
     const storagePath = `${userId}/${assetType}/${timestamp}_${file.name}`;
+    const onProgress = options?.onProgress;
 
     // Insert pending record
     const { data: assetRow, error: insertErr } = await supabase
@@ -149,19 +212,26 @@ const useBrandKitStore = create((set, get) => ({
     if (insertErr) throw insertErr;
 
     // Upload file
-    const { error: uploadErr } = await supabase.storage
-      .from('brand_assets')
-      .upload(storagePath, file, { cacheControl: '3600', upsert: false });
+    let uploadErr = null;
+    try {
+      await uploadWithProgress('brand_assets', storagePath, file, onProgress);
+    } catch (error) {
+      uploadErr = error;
+    }
 
     if (uploadErr) {
       await supabase.from('brand_assets').update({ status: ASSET_STATUS.FAILED }).eq('id', assetRow.id);
-      throw uploadErr;
+      throw new Error(toReadableUploadError(uploadErr));
     }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('brand_assets')
+      .getPublicUrl(storagePath);
 
     // Update status to ready
     const { data: updated } = await supabase
       .from('brand_assets')
-      .update({ status: ASSET_STATUS.READY })
+      .update({ status: ASSET_STATUS.READY, public_url: publicUrl || null, updated_at: new Date().toISOString() })
       .eq('id', assetRow.id)
       .select()
       .single();

@@ -1722,3 +1722,488 @@
 /* ── Slide number badge (add to GenerateV2.css or equivalent) ── */
 .slide-number-badge { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.65); color: #fff; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 12px; pointer-events: none; }
 
+/* ============================================================================
+   FREEPIK UI INTEGRATION - custom flow-inspired controls
+   ============================================================================ */
+.flow-settings-bar {
+  background:
+    linear-gradient(120deg, rgba(255,255,255,0.025), rgba(255,255,255,0)),
+    radial-gradient(circle at 12% 50%, rgba(99,102,241,0.16), transparent 52%);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.flow-input-wrapper {
+  background: linear-gradient(170deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 8px 12px;
+}
+
+.progress-label {
+  font-size: 0.72rem;
+  color: var(--gen-text-3, #aaa);
+  margin-top: 4px;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+
+/* -- Edit Panel ------------------------------------------------------------- */
+.image-edit-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.edit-panel-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gen-text-2);
+}
+
+.edit-drop-zone {
+  position: relative;
+  border: 1px dashed rgba(255,255,255,0.2);
+  border-radius: 14px;
+  padding: 18px 14px;
+  text-align: center;
+  cursor: pointer;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  color: var(--gen-text-2);
+  background: linear-gradient(160deg, rgba(99,102,241,0.14), rgba(17,20,32,0.28));
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.edit-drop-zone small {
+  color: var(--gen-text-3);
+  font-size: 0.72rem;
+}
+
+.edit-drop-zone:hover,
+.edit-drop-zone.dragging {
+  border-color: rgba(129,140,248,0.75);
+  transform: translateY(-1px);
+}
+
+.edit-drop-zone-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.edit-or-divider {
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
+.edit-library-btn {
+  border: 1px solid var(--gen-border);
+  background: rgba(0,0,0,0.25);
+  color: var(--gen-text-1);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.edit-library-btn:hover {
+  border-color: rgba(129,140,248,0.75);
+}
+
+.edit-preview-container {
+  position: relative;
+  display: inline-flex;
+  border-radius: 10px;
+}
+
+.edit-preview-image {
+  width: min(220px, 70vw);
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.edit-preview-clear {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ef4444;
+  color: #fff;
+  cursor: pointer;
+}
+
+.edit-library-overlay {
+  position: absolute;
+  inset: auto 0 calc(100% + 10px) 0;
+  border: 1px solid var(--gen-border);
+  border-radius: 12px;
+  padding: 10px;
+  background: var(--gen-panel);
+  box-shadow: var(--gen-shadow-lg);
+  z-index: 30;
+}
+
+.edit-library-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.edit-library-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.edit-library-thumb:hover {
+  border-color: rgba(129,140,248,0.9);
+}
+
+.edit-library-empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--gen-text-3);
+}
+
+.edit-upload-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.74rem;
+  color: var(--gen-text-2);
+}
+
+.edit-upload-progress-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.15);
+}
+
+.edit-upload-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #818cf8, #22d3ee);
+  transition: width 0.2s ease;
+}
+
+.edit-instruction-area {
+  display: grid;
+  gap: 6px;
+}
+
+.edit-instruction-label {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gen-text-3);
+  font-weight: 700;
+}
+
+.edit-instruction-area textarea {
+  width: 100%;
+  min-height: 88px;
+  border: 1px solid var(--gen-border);
+  border-radius: 10px;
+  background: rgba(0,0,0,0.18);
+  color: var(--gen-text-1);
+  resize: vertical;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.edit-file-error {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #f87171;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* -- Video Modal ------------------------------------------------------------ */
+.video-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4,7,15,0.66);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 120;
+}
+
+.video-modal {
+  width: min(440px, 100%);
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background:
+    radial-gradient(circle at 0 0, rgba(34,211,238,0.2), transparent 34%),
+    linear-gradient(160deg, rgba(17,20,32,0.96), rgba(8,11,22,0.96));
+  padding: 18px 16px 16px;
+  box-shadow: 0 28px 65px rgba(0,0,0,0.45);
+  color: var(--gen-text-1);
+  display: grid;
+  gap: 10px;
+  position: relative;
+}
+
+.video-modal-dismiss {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--gen-border);
+  background: rgba(0,0,0,0.26);
+  color: var(--gen-text-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.video-modal-dismiss:hover {
+  color: var(--gen-text-1);
+  border-color: rgba(129,140,248,0.9);
+}
+
+.video-modal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(129,140,248,0.14);
+  color: #c7d2fe;
+}
+
+.video-modal-title {
+  margin: 2px 0 0;
+  font-size: 1.06rem;
+  font-weight: 700;
+}
+
+.video-modal-subtitle {
+  margin: 0;
+  color: var(--gen-text-2);
+  font-size: 0.84rem;
+}
+
+.video-modal-prompt {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(0,0,0,0.2);
+  color: var(--gen-text-2);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.video-modal-job-id {
+  margin: 0;
+  color: var(--gen-text-3);
+  font-size: 0.72rem;
+}
+
+.video-modal-job-id code {
+  color: var(--gen-text-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.video-modal-progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.12);
+}
+
+.video-modal-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #818cf8, #22d3ee);
+  transition: width 0.25s ease;
+}
+
+.video-modal-pct {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #dbeafe;
+}
+
+.video-modal-eta {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--gen-text-3);
+}
+
+.video-preview-thumb {
+  width: 100%;
+  border-radius: 10px;
+  background: #000;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.video-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.video-modal-minimize {
+  border: 1px solid var(--gen-border);
+  background: rgba(0,0,0,0.28);
+  color: var(--gen-text-2);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+/* -- Minimized Video Bar ---------------------------------------------------- */
+.video-status-bar {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(13,16,24,0.93);
+  box-shadow: 0 15px 32px rgba(0,0,0,0.34);
+  display: grid;
+  grid-template-columns: 1fr 100px auto auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  z-index: 130;
+}
+
+.video-status-bar-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--gen-text-1);
+}
+
+.video-status-bar-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.14);
+  overflow: hidden;
+}
+
+.video-status-bar-fill {
+  height: 100%;
+  transition: width 0.25s ease;
+  background: linear-gradient(90deg, #818cf8, #22d3ee);
+}
+
+.video-status-bar-pct {
+  font-size: 0.75rem;
+  color: var(--gen-text-2);
+}
+
+.video-status-bar-expand,
+.video-status-bar-dismiss {
+  border: 1px solid var(--gen-border);
+  background: rgba(255,255,255,0.02);
+  color: var(--gen-text-2);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+/* -- Video Grid Card States ------------------------------------------------- */
+.processing-overlay.video-processing {
+  background: linear-gradient(180deg, rgba(10,14,26,0.95), rgba(5,8,15,0.95));
+  gap: 8px;
+}
+
+.video-processing-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.video-eta-text {
+  font-size: 0.7rem;
+  color: var(--gen-text-3);
+}
+
+.video-play-badge {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3,6,13,0.52);
+  color: #e2e8f0;
+  font-size: 1.2rem;
+  border: 1px solid rgba(255,255,255,0.35);
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+@media (max-width: 768px) {
+  .edit-library-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .video-status-bar {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .video-status-bar-progress {
+    width: 100%;
+  }
+
+  .video-status-bar-expand,
+  .video-status-bar-dismiss {
+    justify-self: end;
+  }
+}
+

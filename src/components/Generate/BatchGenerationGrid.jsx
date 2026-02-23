@@ -125,6 +125,7 @@ export default function BatchGenerationGrid({ generations = [], onSelect }) {
           const isHovered = hoveredId === gen.id;
           const isCompleted = gen.status === GENERATION_STATUS.COMPLETED;
           const isProcessing = gen.status === GENERATION_STATUS.PROCESSING;
+          const isVideo = gen.media_type === 'video';
 
           return (
             <div
@@ -140,7 +141,22 @@ export default function BatchGenerationGrid({ generations = [], onSelect }) {
             >
               {/* Media Preview - Full Size */}
               <div className="result-media-container">
-                {isProcessing && (
+                {isProcessing && isVideo && (
+                  <div className="processing-overlay video-processing">
+                    <span className="video-processing-icon" aria-hidden="true">🎬</span>
+                    <span className="processing-text">Generating video...</span>
+                    <div className="processing-progress">
+                      <div
+                        className="processing-progress-fill"
+                        style={{ width: `${gen.progress ?? 0}%` }}
+                      />
+                    </div>
+                    <span className="progress-percentage">{gen.progress ?? 0}%</span>
+                    <span className="video-eta-text">This may take 2-4 min</span>
+                  </div>
+                )}
+
+                {isProcessing && !isVideo && (
                   <div className="processing-overlay">
                     <div className="processing-spinner" />
                     <span className="processing-text">Generating...</span>
@@ -155,7 +171,7 @@ export default function BatchGenerationGrid({ generations = [], onSelect }) {
                   </div>
                 )}
 
-                {isCompleted && gen.media_type === 'video' && (
+                {isCompleted && isVideo && (
                   <video
                     src={resolveVideoSource(gen.storage_path)}
                     className="result-media"
@@ -164,6 +180,10 @@ export default function BatchGenerationGrid({ generations = [], onSelect }) {
                     playsInline
                     autoPlay={isHovered}
                   />
+                )}
+
+                {isCompleted && isVideo && (
+                  <div className="video-play-badge" aria-hidden="true">▶</div>
                 )}
 
                 {isCompleted && gen.media_type === 'image' && (
